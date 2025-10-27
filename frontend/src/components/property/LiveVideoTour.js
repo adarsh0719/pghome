@@ -114,27 +114,38 @@ const LiveVideoTour = ({ propertyId }) => {
   };
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      {!joined ? (
-        <button
-          className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700"
-          onClick={joinRoom}
-        >
-          Join Live Video Tour
-        </button>
-      ) : (
-        <p className="text-gray-500">Waiting for another participant...</p>
-      )}
+   <div className="flex flex-col items-center gap-4 px-2 sm:px-4">
+  {!joined ? (
+    <button
+      className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 w-full sm:w-auto"
+      onClick={joinRoom}
+    >
+      Join Live Video Tour
+    </button>
+  ) : (
+    <p className="text-gray-500 text-center">Waiting for another participant...</p>
+  )}
 
-      <div className="flex gap-4 mt-4">
-        <video ref={localVideoRef} autoPlay muted className="w-64 rounded-lg border" />
-        <video ref={remoteVideoRef} autoPlay className="w-64 rounded-lg border" />
-      </div>
+  <div className="flex flex-col sm:flex-row gap-4 mt-4 items-center">
+    <video
+      ref={localVideoRef}
+      autoPlay
+      muted
+      className="w-full sm:w-64 rounded-lg border"
+    />
+    <video
+      ref={remoteVideoRef}
+      autoPlay
+      className="w-full sm:w-64 rounded-lg border"
+    />
+  </div>
 
-      {remoteConnected && (
-        <p className="text-green-600 font-semibold">Connected to other user 🎥</p>
-      )}
-    </div>
+  {remoteConnected && (
+    <p className="text-green-600 font-semibold text-center">
+      Connected to other user 🎥
+    </p>
+  )}
+</div>
   );
 };
 
