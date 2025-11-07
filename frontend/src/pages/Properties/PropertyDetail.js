@@ -143,20 +143,20 @@ const PropertyDetail = () => {
             {property.images.length > 1 && (
               <div className="absolute bottom-4 left-4 right-4 flex space-x-2 overflow-x-auto">
                 {property.images.map((imageObj, index) => (
-  <button
-    key={index}
-    onClick={() => setActiveImage(index)}
-    className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 ${
-      activeImage === index ? 'border-indigo-600' : 'border-gray-300'
-    }`}
-  >
-    <img
-      src={imageObj.url}  
-      alt={`${property.title} ${index + 1}`}
-      className="w-full h-full object-cover"
-    />
-  </button>
-))}
+            <button
+              key={index}
+              onClick={() => setActiveImage(index)}
+              className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 ${
+              activeImage === index ? 'border-indigo-600' : 'border-gray-300'
+               }`}
+             >
+            <img
+             src={imageObj.url}  
+             alt={`${property.title} ${index + 1}`}
+             className="w-full h-full object-cover"
+             />
+            </button>
+             ))}
 
               </div>
             )}

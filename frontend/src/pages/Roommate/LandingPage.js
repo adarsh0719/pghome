@@ -24,7 +24,7 @@ const cards = [
 const LandingPage = () => {
   return (
     <>
-      {/* ✅ Use the reusable Navbar */}
+      {/* Use the reusable Navbar */}
       <Navbar />
 
       {/* MAIN WRAPPER */}

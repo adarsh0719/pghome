@@ -31,7 +31,7 @@ const ChatWindow = ({ chatId, receiver, onClose }) => {
         });
         setMessages(data.messages || []);
       } catch (err) {
-        console.error("❌ Error fetching messages:", err);
+        console.error(" Error fetching messages:", err);
       }
     };
 

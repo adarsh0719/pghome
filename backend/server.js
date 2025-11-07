@@ -64,7 +64,7 @@ app.use('/api/payments', require('./routes/payments'));
 app.use('/api/roommate', require('./routes/roommate'));
 app.use('/api/kyc', require('./routes/kyc'));
 app.use('/api/chat', require('./routes/chatRoutes'));
-app.use('/api/connections', require('./routes/connectionRoutes'));
+app.use('/api/connection', require('./routes/connectionRoutes'));
 
 // --- 🔥 SOCKET.IO SETUP (WebRTC + Chat + Notifications) ---
 io.on('connection', (socket) => {
