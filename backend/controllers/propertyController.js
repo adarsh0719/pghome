@@ -2,8 +2,6 @@ const Property = require('../models/Property');
 const User = require('../models/User');
 
 // @desc    Get all properties
-// @route   GET /api/properties
-// @access  Public (with filters via query string)
 exports.getProperties = async (req, res) => {
   try {
     // Build query based on filters
@@ -40,9 +38,7 @@ exports.getProperties = async (req, res) => {
   }
 };
 
-// @desc    Get single property
 // @route   GET /api/properties/:id
-// @access  Public
 exports.getProperty = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id).populate('owner', 'name email phone');
@@ -59,8 +55,6 @@ exports.getProperty = async (req, res) => {
 };
 
 // @desc    Create a property
-// @route   POST /api/properties
-// @access  Private (only owners)
 exports.createProperty = async (req, res) => {
   try {
     // Check if user is an owner
@@ -101,8 +95,6 @@ exports.createProperty = async (req, res) => {
     await property.save();
 
     // Also add the property to the owner's properties array
-   // Also add the property to the owner's properties array
-    // Also add the property to the owner's properties array
 await User.findByIdAndUpdate(
   req.user._id, // FIX: Use _id instead of id
   { $addToSet: { properties: property._id } },
@@ -117,8 +109,7 @@ await User.findByIdAndUpdate(
 };
 
 // @desc    Update a property
-// @route   PUT /api/properties/:id
-// @access  Private (only the owner of the property)
+
 exports.updateProperty = async (req, res) => {
   try {
     let property = await Property.findById(req.params.id);
@@ -145,8 +136,6 @@ exports.updateProperty = async (req, res) => {
 };
 
 // @desc    Delete a property
-// @route   DELETE /api/properties/:id
-// @access  Private (only the owner of the property)
 exports.deleteProperty = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);

@@ -6,7 +6,7 @@ const adminAuth = require('../middleware/adminAuth');
 const kycController = require('../controllers/kycController');
 console.log(typeof auth, typeof adminAuth, typeof upload.fields);
 
-// ✅ USER submits KYC
+//USER submits KYC
 router.post(
   '/submit',
   auth,
@@ -17,10 +17,10 @@ router.post(
   kycController.submitKyc
 );
 
-// ✅ ADMIN views pending KYCs
+//ADMIN views pending KYCs
 router.get('/pending', adminAuth, kycController.getPendingKyc);
 
-// ✅ ADMIN reviews (approve/reject) KYCs
+// ADMIN reviews (approve/reject) KYCs
 router.post('/:id/review', adminAuth, kycController.reviewKyc);
 
 module.exports = router;

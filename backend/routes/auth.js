@@ -5,6 +5,10 @@ const jwt = require('jsonwebtoken');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
+const nodemailer = require("nodemailer");
+const Otp = require("../models/Otp");
+const { sendOTP, verifyOTP } = require("../controllers/otpController");
+
 
 // FIX: Use consistent token signing
 const signToken = (id) => {
@@ -99,5 +103,22 @@ router.get('/test-token', protect, (req, res) => {
     }
   });
 });
+
+// Get logged in user details (fresh data from DB)
+router.get('/me', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    res.json({
+      status: "success",
+      user
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/send-otp", sendOTP);
+router.post("/verify-otp", verifyOTP);
+
 
 module.exports = router;

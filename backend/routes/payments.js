@@ -8,9 +8,8 @@ const Property = require('../models/Property');
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-// --------------------
+
 // Create payment intent for subscription
-// --------------------
 router.post('/create-subscription', protect, async (req, res) => {
   try {
     const { email, amount } = req.body;
@@ -32,9 +31,9 @@ router.post('/create-subscription', protect, async (req, res) => {
   }
 });
 
-// --------------------
+
 // Create payment intent for booking
-// --------------------
+
 router.post('/create-booking-payment', protect, async (req, res) => {
   try {
     const { bookingId } = req.body;
@@ -60,9 +59,9 @@ router.post('/create-booking-payment', protect, async (req, res) => {
   }
 });
 
-// --------------------
+
 // Stripe webhook to handle payments
-// --------------------
+
 router.post(
   '/webhook',
   express.raw({ type: 'application/json' }),

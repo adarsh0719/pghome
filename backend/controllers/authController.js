@@ -2,10 +2,10 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// ✅ Generate JWT - include isAdmin for frontend/admin routing
+//  Generate JWT - include isAdmin for frontend/admin routing
 const generateToken = (user) => {
   return jwt.sign(
-    { id: user._id, isAdmin: user.isAdmin }, // added isAdmin
+    { id: user._id, isAdmin: user.isAdmin },
     process.env.JWT_SECRET,
     { expiresIn: '30d' }
   );
@@ -71,7 +71,7 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (user && (await user.correctPassword(password, user.password))) {
-      // ✅ Token now includes isAdmin
+      // Token now includes isAdmin
       const token = generateToken(user);
 
       res.json({

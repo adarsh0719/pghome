@@ -62,8 +62,8 @@ const protect = async (req, res, next) => {
   }
 };
 
-// ✅ Export the middleware directly for use like `const auth = require(...)`
+//Export the middleware directly 
 module.exports = protect;
 
-// ✅ Also keep named export (for other imports using destructuring)
+// for other imports using destructuring
 module.exports.protect = protect;
