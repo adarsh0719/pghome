@@ -1,12 +1,11 @@
 import React from 'react';
-import { Routes,Route, Navigate } from 'react-router-dom';
+import { Routes,Route, Navigate,useLocation  } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // Components
 import Navbar from './components/Layout/Navbar';
-import Home from './pages/Home';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import Properties from './pages/Properties/Properties';
@@ -18,8 +17,15 @@ import Kycverification from './pages/kyc/KycForm';
 import Adminkyc from './pages/kyc/AdminKycList';
 import RoommateMatches from './pages/Roommate/RoommateMatches';
 import LiveVideoTourinstructions from './components/property/LiveVideoTourinstructions';
+import DownloadApp from './pages/homepage/DownloadApp';
+import Features from './pages/homepage/Features';
+import Footer from './pages/homepage/Footer';
+import KycWaiting from './pages/kyc/KycWaiting';
+import LandingPage from './pages/Roommate/LandingPage';
+import ProfileInDetail from './pages/profileview/ProfileInDetail';
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
+
 
 const queryClient = new QueryClient();
 
@@ -27,6 +33,7 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
+  // Show loader while checking token/user
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -34,10 +41,14 @@ const ProtectedRoute = ({ children }) => {
       </div>
     );
   }
-  
-  return user ? children : <Navigate to="/login" />;
-};
 
+  // After loading, if no user → redirect
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  return children;
+};
 // Owner Only Route
 const OwnerRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -46,6 +57,7 @@ const OwnerRoute = ({ children }) => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+        
       </div>
     );
   }
@@ -67,15 +79,27 @@ const PublicRoute = ({ children }) => {
   
   return !user ? children : <Navigate to="/dashboard" />;
 };
+  
 
 function App() {
+  const location = useLocation();
+  const hideNavbar = location.pathname === "/";
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
           <div className="App">
-            <Navbar />
+            {!hideNavbar && <Navbar/>}
+            <div className="main-content ">
             <Routes>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={
+            
+                  <>
+                   <LandingPage  />
+                  <Features />
+                 <DownloadApp />
+                  <Footer />
+                  </>
+                  }/>
               <Route path="/properties" element={<Properties />} />
               <Route path="/properties/:id" element={<PropertyDetail />} />
               
@@ -91,10 +115,11 @@ function App() {
                 </PublicRoute>
               } />
               
+              
               {/* Protected routes (only accessible when logged in) */}
               <Route path="/dashboard" element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <Dashboard className='pt-44'/>
                 </ProtectedRoute>
               } />
               <Route path="/add-property" element={
@@ -113,22 +138,36 @@ function App() {
                  </ProtectedRoute>
         
               } />
+              <Route path="/kyc-waiting" element={
+               <ProtectedRoute>
+                 <KycWaiting/>
+                 </ProtectedRoute>
+        
+              } />
               <Route path="/subscription" element={
                 <ProtectedRoute>
                   <Subscription />
                 </ProtectedRoute>
               } />
                <Route path="/videotour-guide" element={
-                  <PublicRoute>
+                  <>
                   <LiveVideoTourinstructions />
-              </PublicRoute>
+                </>
               } />
               <Route path="/roommateMatches" element={
                 <ProtectedRoute>
                   <RoommateMatches />
                 </ProtectedRoute>
               } />
+               <Route path="/profile/:id" element={
+                <ProtectedRoute>
+                  <ProfileInDetail />
+                </ProtectedRoute>
+              } />
+              
+              
             </Routes>
+            </div>
             <ToastContainer position="bottom-right" />
           </div>
       </AuthProvider>

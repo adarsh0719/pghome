@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link,useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import LiveVideoTour from '../../components/property/LiveVideoTour'; // make sure the path is correct
 import BookingPayment from '../Payment/BookingPayment'; 
+
 const PropertyDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
@@ -23,7 +25,6 @@ const PropertyDetail = () => {
   const fetchProperty = async () => {
     try {
       const response = await axios.get(`/api/properties/${id}`);
-      console.log("Property fetched:", response.data); // ✅ log full response
       setProperty(response.data);
     } catch (error) {
       console.error('Error fetching property:', error);
@@ -44,6 +45,10 @@ const PropertyDetail = () => {
       toast.warning('You need to subscribe to view owner contact details');
     }
   };
+
+
+
+  
 
     const handleBooking = async () => {
     if (!user) {
@@ -68,6 +73,23 @@ const PropertyDetail = () => {
     }
   };
 
+
+   const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this property?')) return;
+
+    try {
+      const res = await axios.delete(`/api/properties/${id}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      toast.success(res.data.message || 'Property deleted successfully!');
+      navigate('/dashboard'); // Redirect after deletion
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.message || 'Failed to delete property');
+    }
+  };
+
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -89,8 +111,11 @@ const PropertyDetail = () => {
     );
   }
 
+
+  
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 pt-32">
       <div className="max-w-6xl mx-auto px-4">
 
         {/* Breadcrumb */}
@@ -117,21 +142,22 @@ const PropertyDetail = () => {
             
             {property.images.length > 1 && (
               <div className="absolute bottom-4 left-4 right-4 flex space-x-2 overflow-x-auto">
-                {property.images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setActiveImage(index)}
-                    className={`flex-shrink-0 w-16 h-16 border-2 ${
-                      activeImage === index ? 'border-indigo-600' : 'border-white'
-                    }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`${property.title} ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
+                {property.images.map((imageObj, index) => (
+  <button
+    key={index}
+    onClick={() => setActiveImage(index)}
+    className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 ${
+      activeImage === index ? 'border-indigo-600' : 'border-gray-300'
+    }`}
+  >
+    <img
+      src={imageObj.url}  
+      alt={`${property.title} ${index + 1}`}
+      className="w-full h-full object-cover"
+    />
+  </button>
+))}
+
               </div>
             )}
 
@@ -229,7 +255,7 @@ const PropertyDetail = () => {
                       <>
                         <button
                           onClick={handleContactOwner}
-                          className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+                          className="w-full bg-[#c17041] text-white py-3 rounded-lg font-semibold transition"
                         >
                           Contact Owner
                         </button>
@@ -237,12 +263,12 @@ const PropertyDetail = () => {
                         {property.liveViewAvailable && (
                           <button
                             onClick={() => setLiveTourActive(true)}
-                            className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+                            className="w-full bg-gray-500 text-white py-3 rounded-lg font-semibold hover:black transition"
                           >
                             Live Video Tour
                           </button>
                         )}
-                        <button className="w-full border border-indigo-600 text-indigo-600 py-3 rounded-lg font-semibold hover:bg-indigo-50 transition"
+                        <button className="w-full border border-[#c17041] text-[#c17041] py-3 rounded-lg font-semibold hover:bg-white transition"
                          onClick={handleBooking}>
                           Book Now!
                         </button>
@@ -251,7 +277,7 @@ const PropertyDetail = () => {
                     ) : (
                       <Link
                         to="/login"
-                        className="block w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition text-center"
+                        className="block w-full bg-[#d16729] text-white py-3 rounded-lg font-semibold hover:bg-black transition text-center"
                       >
                         Login to Contact
                       </Link>
@@ -284,9 +310,21 @@ const PropertyDetail = () => {
                       </span>
                     </div>
                   </div>
+
                 </div>
               </div>
             </div>
+{user && property?.owner?._id === user._id && (
+  <div className="flex justify-start mt-4">
+    <button
+      onClick={handleDelete}
+      className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-semibold transition"
+    >
+      Delete Property
+    </button>
+  </div>
+)}
+
           </div>
         </div>
       </div>

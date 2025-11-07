@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import image1 from '../../images/image1.jpg';
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -30,37 +31,36 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F7F7] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      
-      {/* Logo & Header */}
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <div className="w-14 h-14 bg-[#FF5A5F] rounded-xl flex items-center justify-center shadow-md">
-            <span className="text-white font-bold text-xl">PG</span>
-          </div>
-        </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-[#484848]">
+    <div className="min-h-screen relative flex flex-col justify-center py-12 sm:px-6 lg:px-8 pt-24">
+      {/* Background image div with blur */}
+      <div
+        className="absolute inset-0 bg-cover bg-center filter "
+        style={{ backgroundImage: `url(${image1})` }}
+      ></div>
+
+      {/* Optional semi-transparent overlay for better contrast */}
+      <div className="absolute inset-0 bg-black opacity-30"></div>
+
+      {/* Login form container */}
+      <div className="relative sm:mx-auto sm:w-full sm:max-w-md z-10">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
           Sign in to your account
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-center text-sm text-gray-200">
           Or{' '}
           <Link
             to="/register"
-            className="font-medium text-[#FF5A5F] hover:text-[#E0484F] transition-colors"
+            className="font-medium text-[#d16729] hover:text-white transition-colors"
           >
             create a new account
           </Link>
         </p>
-      </div>
 
-      {/* Form */}
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-xl sm:rounded-2xl sm:px-10">
+        {/* Transparent form box */}
+        <div className="mt-8 bg-white/50 py-8 px-6 shadow-xl sm:rounded-2xl sm:px-10 backdrop-blur-md">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            
-            {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-[#484848]">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address
               </label>
               <div className="mt-1">
@@ -78,9 +78,8 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-[#484848]">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
               <div className="mt-1">
@@ -98,12 +97,11 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Submit */}
             <div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-[#FF5A5F] hover:bg-[#E0484F] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF5A5F] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-[#d16729] hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF5A5F] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? 'Signing in...' : 'Sign in'}
               </button>
@@ -117,7 +115,7 @@ const Login = () => {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500 font-medium">Demo Credentials</span>
+                <span className="px-2 bg-white/70 text-gray-500 font-medium">Demo Credentials</span>
               </div>
             </div>
             <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-gray-700">

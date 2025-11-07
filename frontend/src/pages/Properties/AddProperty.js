@@ -482,7 +482,7 @@ const AddProperty = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-[#d16729] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#db611a] transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Listing Property...' : 'List Property'}
               </button>

@@ -5,60 +5,349 @@ import { toast } from 'react-toastify';
 
 const RoommateProfile = ({ onProfileCreated }) => {
   const { user } = useAuth();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     age: '',
+    gender: '',
     budget: '',
-    habits: { smoking: false, drinking: false, pets: false, cleanliness: 3 },
-    vibeScore: 5
+    durationOfStay: '',
+    bio: '',
+    images: [],
+    habits: {
+      smoking: false,
+      drinking: false,
+      pets: false,
+      parties: false,
+      guests: false,
+      cleanliness: 3,
+      sleepSchedule: 'flexible',
+    },
+    vibeScore: 5,
   });
-  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, type, checked, value } = e.target;
     if (name in formData.habits) {
-      setFormData({ ...formData, habits: { ...formData.habits, [name]: type === 'checkbox' ? checked : value } });
-    } else setFormData({ ...formData, [name]: value });
+      setFormData(prev => ({ ...prev, habits: { ...prev.habits, [name]: type === 'checkbox' ? checked : value } }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files).slice(0, 3);
+    setFormData(prev => ({ ...prev, images: files }));
+  };
+
+  const nextStep = () => {
+    setCurrentStep(prev => prev + 1);
+  };
+
+  const prevStep = () => {
+    setCurrentStep(prev => prev - 1);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!user) return toast.error('Login required');
     setLoading(true);
+
     try {
-      const res = await axios.post('/api/roommate/profile', formData, {
-        headers: { Authorization: `Bearer ${user.token}` }
+      const payload = new FormData();
+      payload.append('age', formData.age);
+      payload.append('gender', formData.gender);
+      payload.append('budget', formData.budget);
+      payload.append('durationOfStay', formData.durationOfStay);
+      payload.append('bio', formData.bio);
+      payload.append('vibeScore', formData.vibeScore);
+      payload.append('habits', JSON.stringify(formData.habits));
+
+      formData.images.forEach((file, i) => payload.append('images', file));
+
+      const res = await axios.post('/api/roommate/profile', payload, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          'Content-Type': 'multipart/form-data'
+        }
       });
+
       toast.success('Profile saved!');
-      onProfileCreated(res.data);
+      onProfileCreated && onProfileCreated(res.data);
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to save profile');
+      toast.error(err?.response?.data?.message || 'Failed to save profile');
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded shadow">
-      <h2 className="text-2xl font-bold mb-4">Create Your Roommate Profile</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input type="number" name="age" placeholder="Age" value={formData.age} onChange={handleChange} required className="w-full border px-3 py-2 rounded" />
-        <input type="number" name="budget" placeholder="Budget" value={formData.budget} onChange={handleChange} required className="w-full border px-3 py-2 rounded" />
+  // Step 1: Personal Information
+  const renderPersonalInfo = () => (
+    <div className="space-y-4">
+      <h3 className="text-xl font-semibold mb-4">Tell us about yourself</h3>
+      
+      <div>
+        <label className="block text-sm font-medium mb-1">How old are you?</label>
+        <input 
+          name="age" 
+          type="number" 
+          placeholder="Enter your age" 
+          value={formData.age} 
+          onChange={handleChange} 
+          required
+          className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">What is your gender?</label>
+        <select 
+          name="gender" 
+          value={formData.gender} 
+          onChange={handleChange} 
+          required 
+          className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">Select your gender</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">What's your monthly budget?</label>
+        <input 
+          name="budget" 
+          type="number" 
+          placeholder="Enter monthly budget" 
+          value={formData.budget}
+          onChange={handleChange} 
+          required 
+          className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">How long do you plan to stay? (months)</label>
+        <input 
+          name="durationOfStay" 
+          type="number" 
+          placeholder="Enter duration in months"
+          value={formData.durationOfStay} 
+          onChange={handleChange} 
+          required 
+          className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
+    </div>
+  );
+
+  // Step 2: Bio & Images
+  const renderBioAndImages = () => (
+    <div className="space-y-4">
+      <h3 className="text-xl font-semibold mb-4">Describe yourself & share photos</h3>
+      
+      <div>
+        <label className="block text-sm font-medium mb-1">Tell us about yourself</label>
+        <textarea 
+          name="bio" 
+          placeholder="Share a brief introduction about yourself, your interests, and what you're looking for in a roommate..."
+          value={formData.bio}
+          onChange={handleChange} 
+          maxLength={200} 
+          rows={4}
+          className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <p className="text-xs text-gray-500 mt-1">{formData.bio.length}/200 characters</p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Add some photos (up to 3)</label>
+        <input 
+          type="file" 
+          accept="image/*" 
+          multiple 
+          onChange={handleImageChange}
+          className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <div className="flex gap-2 mt-3">
+          {formData.images.map((f, idx) => (
+            <img key={idx} src={URL.createObjectURL(f)} alt="preview" className="w-20 h-20 object-cover rounded border" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Step 3: Habits & Preferences
+  const renderHabits = () => (
+    <div className="space-y-4">
+      <h3 className="text-xl font-semibold mb-4">Your living habits & preferences</h3>
+      
+      <div className="space-y-3">
+        <label className="block text-sm font-medium">Which of these apply to you?</label>
+        <div className="grid grid-cols-1 gap-3">
+          {[
+            { key: 'smoking', label: 'I smoke' },
+            { key: 'drinking', label: 'I drink alcohol' },
+            { key: 'pets', label: 'I have pets' },
+            { key: 'parties', label: 'I like to host parties' },
+            { key: 'guests', label: 'I frequently have guests over' }
+          ].map(item => (
+            <label key={item.key} className="flex items-center gap-3 p-3 border rounded hover:bg-gray-50">
+              <input 
+                name={item.key} 
+                type="checkbox" 
+                checked={formData.habits[item.key]} 
+                onChange={handleChange}
+                className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span>{item.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 mt-4">
         <div>
-          <label>Habits:</label>
-          <div className="flex flex-col space-y-1">
-            <label><input type="checkbox" name="smoking" checked={formData.habits.smoking} onChange={handleChange} /> Smoking</label>
-            <label><input type="checkbox" name="drinking" checked={formData.habits.drinking} onChange={handleChange} /> Drinking</label>
-            <label><input type="checkbox" name="pets" checked={formData.habits.pets} onChange={handleChange} /> Pets</label>
-            <label>Cleanliness (1-5): <input type="number" name="cleanliness" min="1" max="5" value={formData.habits.cleanliness} onChange={handleChange} className="border px-2 py-1 ml-2 w-16" /></label>
+          <label className="block text-sm font-medium mb-2">
+            How clean do you keep your space?
+            <span className="ml-2 text-gray-500">(1 = messy, 5 = very clean)</span>
+          </label>
+          <input 
+            name="cleanliness" 
+            type="range" 
+            min="1" 
+            max="5" 
+            value={formData.habits.cleanliness} 
+            onChange={handleChange}
+            className="w-full"
+          />
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>Messy</span>
+            <span>Very Clean</span>
           </div>
         </div>
+
         <div>
-          <label>Vibe Score (1-10)</label>
-          <input type="number" name="vibeScore" min="1" max="10" value={formData.vibeScore} onChange={handleChange} className="w-full border px-3 py-2 rounded" />
+          <label className="block text-sm font-medium mb-1">What's your typical sleep schedule?</label>
+          <select 
+            name="sleepSchedule" 
+            value={formData.habits.sleepSchedule} 
+            onChange={handleChange}
+            className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="early bird">Early bird (bed by 10 PM)</option>
+            <option value="night owl">Night owl (up past midnight)</option>
+            <option value="flexible">Flexible / It varies</option>
+          </select>
         </div>
-        <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">
-          {loading ? 'Saving...' : 'Save Profile'}
-        </button>
+      </div>
+    </div>
+  );
+
+  // Step 4: Vibe & Review
+  const renderVibeAndReview = () => (
+    <div className="space-y-4">
+      <h3 className="text-xl font-semibold mb-4">Almost done!</h3>
+      
+      <div>
+        <label className="block text-sm font-medium mb-2">
+          How would you rate your overall vibe?
+          <span className="ml-2 text-gray-500">(1 = very chill, 10 = very energetic)</span>
+        </label>
+        <input 
+          name="vibeScore" 
+          type="range" 
+          min="1" 
+          max="10" 
+          value={formData.vibeScore} 
+          onChange={handleChange}
+          className="w-full mb-2"
+        />
+        <div className="flex justify-between text-xs text-gray-500">
+          <span>Very Chill</span>
+          <span className="font-medium">Current: {formData.vibeScore}</span>
+          <span>Very Energetic</span>
+        </div>
+      </div>
+
+      <div className="bg-gray-50 p-4 rounded mt-6">
+        <h4 className="font-medium mb-2">Review your information:</h4>
+        <div className="text-sm space-y-1">
+          <p><strong>Age:</strong> {formData.age}</p>
+          <p><strong>Gender:</strong> {formData.gender}</p>
+          <p><strong>Budget:</strong> ${formData.budget}/month</p>
+          <p><strong>Stay Duration:</strong> {formData.durationOfStay} months</p>
+          <p><strong>Photos:</strong> {formData.images.length} uploaded</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const steps = [
+    { title: "Personal Info", component: renderPersonalInfo },
+    { title: "Bio & Photos", component: renderBioAndImages },
+    { title: "Habits", component: renderHabits },
+    { title: "Review", component: renderVibeAndReview }
+  ];
+
+  return (
+    <div className="max-w-lg mx-auto p-6 bg-white rounded-lg shadow-md pt-24">
+      <h2 className="text-2xl font-bold mb-6 text-center">Create Your Roommate Profile</h2>
+
+      {/* Progress Bar */}
+      <div className="mb-8">
+        <div className="flex justify-between mb-2">
+          {steps.map((step, index) => (
+            <div key={index} className="text-center flex-1">
+              <div className={`h-2 mx-2 rounded-full ${
+                index + 1 < currentStep ? 'bg-indigo-600' : 
+                index + 1 === currentStep ? 'bg-indigo-400' : 'bg-gray-200'
+              }`}></div>
+              <span className={`text-xs mt-1 ${index + 1 <= currentStep ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>
+                {step.title}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        {steps[currentStep - 1].component()}
+
+        <div className="flex justify-between mt-8 pt-4 border-t">
+          {currentStep > 1 && (
+            <button
+              type="button"
+              onClick={prevStep}
+              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              Back
+            </button>
+          )}
+          
+          {currentStep < steps.length ? (
+            <button
+              type="button"
+              onClick={nextStep}
+              className="ml-auto px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              Next
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={loading}
+              className="ml-auto px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            >
+              {loading ? 'Saving...' : 'Complete Profile'}
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );

@@ -39,13 +39,13 @@ const Properties = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 pt-32">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Find Your Perfect Space</h1>
           <Link
             to="/add-property"
-            className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition"
+            className="bg-black text-white px-6 py-2 rounded-lg hover:bg-[#d16729] transition"
           >
             List Property
           </Link>

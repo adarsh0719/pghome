@@ -14,13 +14,14 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem("token") || null); //token state
   const [loading, setLoading] = useState(true);
 
-  // Set up axios interceptor for auth token
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    const storedToken = localStorage.getItem("token");
+    if (storedToken) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
+      setToken(storedToken);
       fetchUser();
     } else {
       setLoading(false);
@@ -33,65 +34,68 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.get(`${API_URL}/api/auth/me`);
       setUser(response.data.data.user);
     } catch (error) {
-      console.error('Error fetching user:', error);
-      localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
+      console.error("Error fetching user:", error);
+      localStorage.removeItem("token");
+      delete axios.defaults.headers.common["Authorization"];
+      setToken(null);
     } finally {
       setLoading(false);
     }
   };
 
   const login = async (email, password) => {
-  try {
-    const response = await axios.post('/api/auth/login', { email, password });
-    const { token, data } = response.data;
+    try {
+      const response = await axios.post("/api/auth/login", { email, password });
+      const { token, data } = response.data;
 
-    localStorage.setItem('token', token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      localStorage.setItem("token", token);
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-    // ✅ Set user state including token
-    const loggedInUser = { ...data.user, token };
-    setUser(loggedInUser);
+      setToken(token); //save token state
+      setUser({ ...data.user, token });
 
-    toast.success('Login successful!');
-    // ✅ Return user along with success
-    return { success: true, user: loggedInUser };
-  } catch (error) {
-    const message = error.response?.data?.message || 'Login failed';
-    toast.error(message);
-    return { success: false, message };
-  }
-};
-const register = async (userData) => {
-  try {
-    const response = await axios.post('/api/auth/register', userData);
-    const { token, data } = response.data;
+      toast.success("Login successful!");
+      return { success: true, user: data.user };
 
-    localStorage.setItem('token', token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } catch (error) {
+      const message = error.response?.data?.message || "Login failed";
+      toast.error(message);
+      return { success: false, message };
+    }
+  };
 
-    // ✅ Include token in user state
-    setUser({ ...data.user, token });
+  const register = async (userData) => {
+    try {
+      const response = await axios.post("/api/auth/register", userData);
+      const { token, data } = response.data;
 
-    toast.success('Registration successful!');
-    return { success: true };
-  } catch (error) {
-    const message = error.response?.data?.message || 'Registration failed';
-    toast.error(message);
-    return { success: false, message };
-  }
-};
+      localStorage.setItem("token", token);
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+      setToken(token); // save token state
+      setUser({ ...data.user, token });
+
+      toast.success("Registration successful!");
+      return { success: true };
+
+    } catch (error) {
+      const message = error.response?.data?.message || "Registration failed";
+      toast.error(message);
+      return { success: false, message };
+    }
+  };
 
   const logout = async () => {
     try {
-      await axios.post('/api/auth/logout');
+      await axios.post("/api/auth/logout");
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     } finally {
-      localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
+      localStorage.removeItem("token");
+      delete axios.defaults.headers.common["Authorization"];
+      setToken(null); // clear token
       setUser(null);
-      toast.success('Logged out successfully!');
+      toast.success("Logged out successfully!");
     }
   };
 
@@ -101,11 +105,12 @@ const register = async (userData) => {
 
   const value = {
     user,
+    token,   //exported token
     login,
     register,
     logout,
     updateUser,
-    loading
+    loading,
   };
 
   return (

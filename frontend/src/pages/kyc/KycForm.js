@@ -1,109 +1,149 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState } from "react";
+import axios from "axios";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function KycForm() {
-  const [aadhaar, setAadhaar] = useState('');
+  const [aadhaar, setAadhaar] = useState("");
   const [front, setFront] = useState(null);
   const [back, setBack] = useState(null);
-  const [msg, setMsg] = useState('');
-  const [loading, setLoading] = useState(false); // ✅ loading state
+  const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+
+  // Small square preview UI
+  const PreviewBox = ({ file }) => {
+    if (!file) return null;
+    return (
+      <img
+        src={URL.createObjectURL(file)}
+        alt="preview"
+        className="w-14 h-14 rounded-md object-cover border border-gray-300 mt-1"
+      />
+    );
+  };
+
+  const handleFile = (fileSetter) => (e) => {
+    const file = e.target.files[0];
+    if (file && file.size > 2*1024* 1024) {
+      setMsg("Each file must be under 2MB");
+      return;
+    }
+    fileSetter(file);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!/^\d{12}$/.test(aadhaar)) return setMsg('Aadhaar must be 12 digits');
-    if (!front || !back) return setMsg('Upload both images');
+    setMsg("");
+
+    if (!/^\d{12}$/.test(aadhaar)) return setMsg("Aadhaar must be 12 digits");
+    if (!front || !back) return setMsg("Upload both images");
 
     const formData = new FormData();
-    formData.append('aadhaar', aadhaar);
-    formData.append('front', front);
-    formData.append('back', back);
+    formData.append("aadhaar", aadhaar);
+    formData.append("front", front);
+    formData.append("back", back);
 
     try {
-      setLoading(true); // start loading
-      const token = localStorage.getItem('token');
-      await axios.post('/api/kyc/submit', formData, {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      await axios.post("/api/kyc/submit", formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setMsg('✅ KYC submitted for review.');
+      setMsg("KYC submitted! Await approval.");
+      navigate("/kyc-waiting");
+      setFront(null);
+      setBack(null);
+      setAadhaar("");
     } catch (err) {
-      setMsg(err.response?.data?.message || '❌ Error submitting KYC');
+      setMsg(err.response?.data?.message || "Error uploading");
     } finally {
-      setLoading(false); // stop loading
+      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white shadow-lg rounded-lg border border-gray-200">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800 text-center">KYC Verification</h2>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="min-h-screen bg-[#f0f0ee] flex flex-col px-5 py-8 items-center pt-32">
+
+      {/* Back + Logo */}
+      <div className="w-full max-w-sm flex justify-center items-center mb-6 relative">
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute left-0 top-1 flex items-center text-gray-700 hover:text-black"
+        >
+          <ArrowLeft size={22} className="mr-1" />
+          <span className="text-sm font-medium">Back</span>
+        </button>
+
+        <div className="flex items-center space-x-1">
+          <span className="text-3xl font-bold text-black">KYC Verification</span>
+        </div>
+      </div>
+
+     
+      <p className="text-sm text-gray-500 mb-6 text-center">
+        Upload your Aadhaar for verification (Max 500KB each)
+      </p>
+
+      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5">
+
+        {/* Aadhaar Input */}
         <div>
-          <label className="block text-gray-700 font-medium mb-1">Aadhaar Number</label>
+          <label className="text-sm font-medium text-gray-600">Aadhaar Number</label>
           <input
             type="text"
             value={aadhaar}
-            onChange={(e) => setAadhaar(e.target.value.replace(/\D/g, ''))}
-            placeholder="Enter 12-digit Aadhaar"
+            onChange={(e) => setAadhaar(e.target.value.replace(/\D/g, ""))}
             maxLength={12}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter 12 digit Aadhaar"
+            className="border rounded-xl px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-orange-500 mt-1"
           />
         </div>
 
+        {/* Front Upload */}
         <div>
-          <label className="block text-gray-700 font-medium mb-1">Front Side of Aadhaar</label>
-          <input
-            type="file"
-            onChange={(e) => setFront(e.target.files[0])}
-            className="w-full"
-          />
+          <label className="text-sm font-medium text-gray-600">Front Side</label>
+          <input type="file" onChange={handleFile(setFront)} className="w-full text-sm mt-1" />
+          <PreviewBox file={front} />
         </div>
 
+        {/* Back Upload */}
         <div>
-          <label className="block text-gray-700 font-medium mb-1">Back Side of Aadhaar</label>
-          <input
-            type="file"
-            onChange={(e) => setBack(e.target.files[0])}
-            className="w-full"
-          />
+          <label className="text-sm font-medium text-gray-600">Back Side</label>
+          <input type="file" onChange={handleFile(setBack)} className="w-full text-sm mt-1" />
+          <PreviewBox file={back} />
         </div>
 
-        <button
-          type="submit"
-          disabled={loading} // disable button during loading
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex justify-center items-center"
-        >
-          {loading ? (
-            <svg
-              className="animate-spin h-5 w-5 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-              ></path>
-            </svg>
-          ) : (
-            'Submit'
-          )}
-        </button>
+        {/* Submit */}
+        <div className="flex justify-center">
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-1/2 py-2 rounded-2xl font-medium text-white transition
+            ${loading ? "bg-gray-400" : "bg-black hover:bg-gray-800"}`}
+          >
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="animate-spin" size={18} /> Uploading...
+              </div>
+            ) : (
+              "Submit"
+            )}
+          </button>
+        </div>
       </form>
 
       {msg && (
-        <p className={`mt-4 text-center ${msg.includes('Error') ? 'text-red-500' : 'text-green-600'}`}>
+        <p
+          className={`mt-4 text-sm text-center ${
+            msg.startsWith("✅") ? "text-green-600" : "text-red-600"
+          }`}
+        >
           {msg}
         </p>
       )}
     </div>
+    
   );
 }

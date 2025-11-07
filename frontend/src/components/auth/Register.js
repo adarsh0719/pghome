@@ -1,193 +1,359 @@
-// src/components/auth/Register.js
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+// src/pages/auth/Register.jsx
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import axios from "axios";
+import { ArrowLeft } from "lucide-react";
+import image1 from "../../images/image1.jpg";
 
 const Register = () => {
-  const [formData, setFormData] = useState({
-    name: '', email: '', password: '', confirmPassword: '',
-    userType: 'student', phone: '', institution: '', company: ''
-  });
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    otp: "",
+    userType: "student",
+    institution: "",
+    company: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const [valid, setValid] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) =>
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  useEffect(() => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^[6-9]\d{9}$/;
+
+    switch (step) {
+      case 1:
+        setValid(formData.name.trim().length >= 3);
+        break;
+      case 2:
+        setValid(emailRegex.test(formData.email));
+        break;
+      case 3:
+        setValid(String(formData.otp).trim().length === 6);
+        break;
+      case 4:
+        setValid(["student", "employee", "owner"].includes(formData.userType));
+        break;
+      case 5:
+        if (formData.userType === "student")
+          setValid(
+            formData.institution.trim().length >= 3 &&
+              phoneRegex.test(formData.phone)
+          );
+        else if (formData.userType === "employee")
+          setValid(
+            formData.company.trim().length >= 2 && phoneRegex.test(formData.phone)
+          );
+        else if (formData.userType === "owner")
+          setValid(phoneRegex.test(formData.phone));
+        break;
+      case 6:
+        setValid(
+          formData.password.length >= 6 &&
+            formData.password === formData.confirmPassword
+        );
+        break;
+      default:
+        setValid(false);
+    }
+  }, [step, formData]);
+
+  const nextStep = () => step < 6 && setStep((s) => s + 1);
+  const prevStep = () => step > 1 && setStep((s) => s - 1);
+
+  const sendOtp = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.post("/api/auth/send-otp", {
+        email: formData.email,
+      });
+      if (res.data && res.data.success) {
+        setOtpSent(true);
+        alert("OTP sent to your email.");
+        setStep(3);
+      } else {
+        alert(res.data.message || "Failed to send OTP");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || "Failed to send OTP";
+      alert(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.post("/api/auth/verify-otp", {
+        email: formData.email,
+        otp: formData.otp,
+      });
+      if (res.data && res.data.success) {
+        alert("OTP verified. Continue registration.");
+        setStep(4);
+      } else {
+        alert(res.data.message || "OTP verification failed");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || "OTP verification failed";
+      alert(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
-      return;
-    }
-
-    setLoading(true);
-
-    const userData = {
+    const data = {
       name: formData.name,
       email: formData.email,
-      password: formData.password,
       userType: formData.userType,
       phone: formData.phone,
-      ...(formData.userType === 'student' && { institution: { name: formData.institution } }),
-      ...(formData.userType === 'employee' && { company: { name: formData.company } })
+      password: formData.password,
+      ...(formData.userType === "student" && {
+        institution: { name: formData.institution },
+      }),
+      ...(formData.userType === "employee" && {
+        company: { name: formData.company },
+      }),
     };
 
-    const result = await register(userData);
-    if (result.success) navigate('/dashboard');
-
+    setLoading(true);
+    const res = await register(data);
+    if (res.success) navigate("/kyc-verify");
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F7F7] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      
-      {/* Logo & Header */}
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <div className="w-14 h-14 bg-[#FF5A5F] rounded-xl flex items-center justify-center shadow-md">
-            <span className="text-white font-bold text-xl">PG</span>
+    <div
+      className="min-h-screen flex justify-center items-center bg-cover bg-center relative"
+      style={{
+        backgroundImage: `url(${image1})`,
+      }}
+    >
+      {/* Background Blur Layer */}
+      <div className="absolute inset-0 backdrop-blur-sm bg-black/30"></div>
+
+      {/* Transparent Card */}
+      <div className="relative bg-white/50 backdrop-blur-xl shadow-2xl rounded-3xl px-8 py-10 w-full max-w-md border border-white/30 z-10">
+        {/* Logo + Back */}
+        <div className="w-full flex justify-center items-center mb-6 relative">
+          {step > 1 && (
+            <button onClick={prevStep} className="absolute left-0 top-1">
+              <ArrowLeft size={22} className="text-white" />
+            </button>
+          )}
+          <div className="flex items-center space-x-1">
+            <span className="text-3xl font-bold text-white">PG</span>
+            <span className="text-3xl font-bold text-[#d16729]">to Home</span>
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-[#484848]">
-          Create your account
+
+        {/* Progress Bar */}
+        <div className="w-full mb-8">
+          <div className="h-1.5 bg-gray-300/50 rounded-full">
+            <div
+              className="h-1.5 bg-[#d16729] rounded-full transition-all"
+              style={{ width: `${(step / 6) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Header */}
+        <h2 className="text-lg font-semibold mb-4 text-white text-center">
+          {[
+            "Nice one! So, what do you like to be called?",
+            "Tell us your Email ID",
+            "Enter the OTP sent to your Gmail",
+            "You are a?",
+            formData.userType === "student"
+              ? "Your institution and phone number?"
+              : formData.userType === "employee"
+              ? "Your company and phone number?"
+              : "Your phone number?",
+            "Set your password",
+          ][step - 1]}
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Or{' '}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {step === 1 && (
+            <input
+              name="name"
+              placeholder="Full Name"
+              className="border border-white/40 bg-white/100 text-black placeholder-gray-400 rounded-2xl px-4 py-2 w-full"
+              value={formData.name}
+              onChange={handleChange}
+            />
+          )}
+
+          {step === 2 && (
+            <>
+              <input
+                type="email"
+                name="email"
+                placeholder="example@gmail.com"
+                className="border border-white/40  bg-white/100 text-black placeholder-gray-400rounded-lg px-4 py-2 w-full"
+                value={formData.email}
+                onChange={handleChange}
+              />
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={sendOtp}
+                  disabled={!valid || loading}
+                  className={`w-1/2 py-2 rounded-2xl font-medium text-white transition 
+                ${valid ? "bg-black hover:bg-gray-800" : "bg-gray-400/50 cursor-not-allowed"}`}
+                >
+                  {loading ? "Sending..." : "Send OTP"}
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <input
+                name="otp"
+                placeholder="6-digit OTP"
+                className="border border-white/40  bg-white/100 text-black placeholder-gray-400 rounded-lg px-4 py-2 w-full"
+                value={formData.otp}
+                onChange={handleChange}
+              />
+              <div className="flex justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={verifyOtp}
+                  disabled={!valid || loading}
+                  className={`py-2 px-4 rounded-2xl font-medium text-white transition 
+                  ${valid ? "bg-black hover:bg-gray-800" : "bg-gray-400/50 cursor-not-allowed"}`}
+                >
+                  {loading ? "Verifying..." : "Verify OTP"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={sendOtp}
+                  disabled={loading}
+                  className="py-2 px-4 rounded-2xl border border-white/50 text-white"
+                >
+                  Resend
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 4 && (
+            <select
+              name="userType"
+              value={formData.userType}
+              onChange={handleChange}
+              className="border border-white/40  bg-white/100 text-black rounded-lg px-4 py-2 w-full"
+            >
+              <option value="student">Student</option>
+              <option value="employee">Working Professional</option>
+              <option value="owner">Property Owner</option>
+            </select>
+          )}
+
+          {step === 5 && (
+            <>
+              {formData.userType === "student" && (
+                <input
+                  name="institution"
+                  placeholder="College/University"
+                  className="border border-white/40  bg-white/100 text-black placeholder-gray-400 rounded-lg px-4 py-2 w-full"
+                  value={formData.institution}
+                  onChange={handleChange}
+                />
+              )}
+
+              {formData.userType === "employee" && (
+                <input
+                  name="company"
+                  placeholder="Company Name"
+                  className="border border-white/40  bg-white/100 text-black placeholder-gray-400 rounded-lg px-4 py-2 w-full"
+                  value={formData.company}
+                  onChange={handleChange}
+                />
+              )}
+
+              <input
+                name="phone"
+                placeholder="Phone Number"
+                className="border border-white/40 bg-white/100  text-black placeholder-gray-400 rounded-lg px-4 py-2 w-full"
+                value={formData.phone}
+                onChange={handleChange}
+              />
+            </>
+          )}
+
+          {step === 6 && (
+            <>
+              <input
+                type="password"
+                name="password"
+                placeholder="Password (min 6 chars)"
+                className="border border-white/40 bg-white/100 text-black placeholder-gray-400 rounded-lg px-4 py-2 w-full"
+                value={formData.password}
+                onChange={handleChange}
+              />
+
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="Confirm Password"
+                className="border border-white/40 bg-white/100 text-black placeholder-gray-400 rounded-lg px-4 py-2 w-full"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+              />
+            </>
+          )}
+
+          {/* Action Button */}
+          <div className="w-full flex justify-center">
+            {step !== 2 && step !== 3 && (
+              <button
+                type={step === 6 ? "submit" : "button"}
+                onClick={step < 6 ? nextStep : undefined}
+                disabled={!valid || loading}
+                className={`w-1/2 py-2 rounded-2xl font-medium text-white transition 
+                ${valid ? "bg-black hover:bg-gray-800" : "bg-gray-400/50 cursor-not-allowed"}`}
+              >
+                {step === 6
+                  ? loading
+                    ? "Creating..."
+                    : "Create Account"
+                  : "Continue"}
+              </button>
+            )}
+          </div>
+        </form>
+
+        {/* Footer */}
+        <p className="text-sm text-white mt-4 text-center">
+          Already have an account?{" "}
           <Link
             to="/login"
-            className="font-medium text-[#FF5A5F] hover:text-[#E0484F] transition-colors"
+            className="bg-[#d16729] hover:bg-black text-black hover:text-white font-medium px-4 py-2 rounded-lg transition duration-200"
           >
-            sign in to your existing account
+            Login
           </Link>
         </p>
-      </div>
-
-      {/* Form */}
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-xl sm:rounded-2xl sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-
-            {/* Full Name */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-[#484848]">Full Name</label>
-              <div className="mt-1">
-                <input
-                  id="name" name="name" type="text" required
-                  value={formData.name} onChange={handleChange}
-                  placeholder="Enter your full name"
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-[#FF5A5F] focus:border-[#FF5A5F] sm:text-sm shadow-sm hover:shadow-md transition-shadow"
-                />
-              </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-[#484848]">Email address</label>
-              <div className="mt-1">
-                <input
-                  id="email" name="email" type="email" autoComplete="email" required
-                  value={formData.email} onChange={handleChange}
-                  placeholder="Enter your email"
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-[#FF5A5F] focus:border-[#FF5A5F] sm:text-sm shadow-sm hover:shadow-md transition-shadow"
-                />
-              </div>
-            </div>
-
-            {/* User Type */}
-            <div>
-              <label htmlFor="userType" className="block text-sm font-medium text-[#484848]">I am a</label>
-              <div className="mt-1">
-                <select
-                  id="userType" name="userType" value={formData.userType} onChange={handleChange}
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-[#FF5A5F] focus:border-[#FF5A5F] sm:text-sm shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <option value="student">Student</option>
-                  <option value="employee">Working Professional</option>
-                  <option value="owner">Property Owner</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Conditional Fields */}
-            {formData.userType === 'student' && (
-              <div>
-                <label htmlFor="institution" className="block text-sm font-medium text-[#484848]">College/University</label>
-                <div className="mt-1">
-                  <input
-                    id="institution" name="institution" type="text" required
-                    value={formData.institution} onChange={handleChange}
-                    placeholder="Enter your college name"
-                    className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-[#FF5A5F] focus:border-[#FF5A5F] sm:text-sm shadow-sm hover:shadow-md transition-shadow"
-                  />
-                </div>
-              </div>
-            )}
-            {formData.userType === 'employee' && (
-              <div>
-                <label htmlFor="company" className="block text-sm font-medium text-[#484848]">Company</label>
-                <div className="mt-1">
-                  <input
-                    id="company" name="company" type="text" required
-                    value={formData.company} onChange={handleChange}
-                    placeholder="Enter your company name"
-                    className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-[#FF5A5F] focus:border-[#FF5A5F] sm:text-sm shadow-sm hover:shadow-md transition-shadow"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Phone */}
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-[#484848]">Phone Number</label>
-              <div className="mt-1">
-                <input
-                  id="phone" name="phone" type="tel" required
-                  value={formData.phone} onChange={handleChange}
-                  placeholder="Enter your phone number"
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-[#FF5A5F] focus:border-[#FF5A5F] sm:text-sm shadow-sm hover:shadow-md transition-shadow"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-[#484848]">Password</label>
-              <div className="mt-1">
-                <input
-                  id="password" name="password" type="password" required
-                  value={formData.password} onChange={handleChange}
-                  placeholder="Enter your password"
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-[#FF5A5F] focus:border-[#FF5A5F] sm:text-sm shadow-sm hover:shadow-md transition-shadow"
-                />
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#484848]">Confirm Password</label>
-              <div className="mt-1">
-                <input
-                  id="confirmPassword" name="confirmPassword" type="password" required
-                  value={formData.confirmPassword} onChange={handleChange}
-                  placeholder="Confirm your password"
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-[#FF5A5F] focus:border-[#FF5A5F] sm:text-sm shadow-sm hover:shadow-md transition-shadow"
-                />
-              </div>
-            </div>
-
-            {/* Submit */}
-            <div>
-              <button
-                type="submit" disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-[#FF5A5F] hover:bg-[#E0484F] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF5A5F] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {loading ? 'Creating account...' : 'Create account'}
-              </button>
-            </div>
-
-          </form>
-        </div>
       </div>
     </div>
   );

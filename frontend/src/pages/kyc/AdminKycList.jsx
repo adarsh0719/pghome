@@ -24,7 +24,7 @@ export default function AdminKycList() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto mt-10">
+    <div className="max-w-4xl mx-auto mt-10 pt-32">
       <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">Pending KYC Requests</h2>
 
       {kycs.length === 0 && (
@@ -36,10 +36,11 @@ export default function AdminKycList() {
           <div key={k._id} className="bg-white shadow-md rounded-lg p-6 border border-gray-200">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4">
               <div>
-                <p className="text-lg font-semibold text-gray-800">{k.user.name}</p>
-                <p className="text-gray-500">{k.user.email}</p>
-                <p className="text-gray-700 mt-1">{k.aadhaarMasked}</p>
-              </div>
+               <p className="text-lg font-semibold text-gray-800">{k?.user?.name || "Unknown User"}</p>
+               <p className="text-gray-500">{k?.user?.email || "No Email"}</p>
+               <p className="text-gray-700 mt-1">{k?.aadhaarMasked || ""}</p>
+             </div>
+ 
               <div className="mt-4 md:mt-0 flex gap-2">
                 <button
                   onClick={() => review(k._id, 'approve')}

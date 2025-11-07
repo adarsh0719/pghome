@@ -1,0 +1,184 @@
+/* Page variables */
+:root {
+  --yellow-1: #fcd34d;
+  --yellow-2: #e6c336;
+}
+
+/* Reset */
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+/* Navbar (fixed to viewport) */
+.navbar {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 80px);
+  max-width: 1200px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 2000;
+  color: #1a1a1a;
+  font-weight: 500;
+}
+
+/* Logo */
+.navbar-left {
+  font-size: 26px;
+  font-weight: 100;
+  color: #1a1a1a;
+}
+
+/* Glass center pill only */
+.navbar-center {
+  display: flex;
+  gap: 28px;
+  padding: 10px 32px;
+  background: rgba(225, 225, 225, 0.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  align-items: center;
+}
+
+/* links inside pill */
+.navbar-center a {
+  color: #111;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  padding: 6px;
+  transition: color .18s ease;
+}
+.navbar-center a:hover { color: #f59e0b; }
+
+/* right button */
+.navbar-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.signin-btn {
+  background: none;
+  border: 2px solid #1a1a1a;
+  color: #1a1a1a;
+  padding: 8px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.signin-btn:hover {
+  background: #1a1a1a;
+  color: white;
+}
+
+/* main wrapper (content area) */
+.landing-wrapper {
+  position: relative;
+  width: 100vw;
+  min-height: 100vh;
+  background: linear-gradient(var(--yellow-1), var(--yellow-2));
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  
+  padding-top: 120px; /* add enough padding to account for fixed navbar */
+  box-sizing: border-box;
+}
+
+
+/* BIG TITLE (behind cards) */
+.landing-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 15vw;
+  font-weight: 900;
+  color: #1a1a1a;
+  pointer-events: none;
+  z-index: 0;
+  user-select: none;
+  opacity: 0.95;
+  letter-spacing: -0.02em;
+}
+
+/* Carousel container */
+.landing-carousel {
+  position: relative;
+  width: 340px;
+  height: 480px;
+  perspective: 1600px;
+  margin-top: 60px;
+  z-index: 10;
+}
+
+/* Individual cards */
+.landing-card {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  backface-visibility: hidden;
+  opacity: 0;
+  transform: translateX(100%) rotateY(15deg) scale(0.9);
+  animation: slideInOut 9s infinite ease-in-out;
+  animation-delay: var(--delay);
+  z-index: 20;
+}
+.landing-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.landing-overlay {
+  position: absolute;
+  bottom: 28px;
+  left: 28px;
+  color: white;
+  font-size: 2rem;
+  font-weight: 600;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  z-index: 30;
+}
+
+/* exact animation */
+@keyframes slideInOut {
+  0% {
+    opacity: 0;
+    transform: translateX(100%) rotateY(15deg) scale(0.9);
+  }
+  10%, 30% {
+    opacity: 1;
+    transform: translateX(0) rotateY(0deg) scale(1);
+  }
+  40% {
+    opacity: 0;
+    transform: translateX(-100%) rotateY(-15deg) scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-100%) rotateY(-15deg) scale(0.9);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .navbar { top: 12px; width: calc(100% - 32px); left: 16px; transform: none; }
+  .navbar-left { font-size: 20px; }
+  .navbar-center { gap: 12px; padding: 8px 14px; }
+  .landing-carousel { width: 280px; height: 400px; }
+  .landing-title { font-size: 28vw; }
+  .landing-overlay { font-size: 1.6rem; bottom: 20px; left: 20px; }
+}

@@ -10,7 +10,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10">
+    <div className="min-h-screen bg-[#f0f0ee] py-10 pt-32">
       <div className="max-w-6xl mx-auto px-6">
 
         {/* Header */}
@@ -115,11 +115,11 @@ const Dashboard = () => {
                 <p className="text-sm text-gray-500 mt-1">Your KYC verification is under review</p>
               )}
             </div>
-            {['verified', 'approved'].includes(user?.kycStatus) ? (
-              <button disabled className="bg-green-600 text-white px-5 py-2 rounded-xl cursor-not-allowed">KYC Completed</button>
+           {['verified', 'approved'].includes(user?.kycStatus?.toLowerCase()) ? (
+              <button disabled className="bg-black text-white px-5 py-2 rounded-xl cursor-not-allowed">KYC Completed</button>
             ) : (
               <Link to="/kyc-verify">
-                <button className="bg-indigo-600 text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition">Complete KYC</button>
+                <button className="bg-black text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition">Complete KYC</button>
               </Link>
             )}
           </div>
@@ -144,7 +144,7 @@ const Dashboard = () => {
               )}
             </div>
             <Link to="/subscription">
-              <button className="bg-indigo-600 text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition">Manage Subscription</button>
+              <button className="bg-[#d16729] text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition">Manage Subscription</button>
             </Link>
           </div>
         </div>

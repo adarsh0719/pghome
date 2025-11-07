@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 const LiveVideoTourinstructions = () => {
    return (
-    <div className="min-h-screen bg-[#F0F7FA] py-12">
+    <div className="min-h-screen bg-[#F0F7FA] py-12 pt-32">
       <div className="max-w-3xl mx-auto px-6 bg-white rounded-xl shadow-md p-8">
         <h1 className="text-3xl font-bold text-[#2B3A67] mb-6">
           Live Video Tour Instructions

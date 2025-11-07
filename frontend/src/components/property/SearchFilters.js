@@ -114,7 +114,7 @@ const SearchFilters = ({ onSearch }) => {
       <div className="flex space-x-2 mt-4">
         <button
           onClick={handleSearchClick}
-          className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
+          className="w-full bg-[#d16729] text-white py-2 rounded-lg hover:bg-black transition"
         >
           Search
         </button>

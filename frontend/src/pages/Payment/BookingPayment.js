@@ -26,7 +26,7 @@ const CheckoutForm = ({ bookingId, onSuccess }) => {
       return;
     }
 
-    // 1️⃣ Create payment intent on backend
+    // Create payment intent on backend
     const API_URL = process.env.REACT_APP_API_URL;
     const res = await fetch(`${API_URL}/api/payments/create-booking-payment`, {
       method: 'POST',
@@ -44,7 +44,7 @@ const CheckoutForm = ({ bookingId, onSuccess }) => {
 
     const data = await res.json();
 
-    // 2️⃣ Confirm payment with Stripe
+    //  Confirm payment with Stripe
     const result = await stripe.confirmCardPayment(data.clientSecret, {
       payment_method: {
         card: elements.getElement(CardElement)

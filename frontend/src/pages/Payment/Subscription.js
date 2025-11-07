@@ -53,7 +53,7 @@ const SubscriptionForm = ({ plan }) => {
   window.location.reload();
       }
     } catch (err) {
-      console.error('❌ Axios error:', err.response?.data || err.message);
+      console.error(' Axios error:', err.response?.data || err.message);
       alert('Payment failed');
     }
 
@@ -66,7 +66,7 @@ const SubscriptionForm = ({ plan }) => {
       <button
         type="submit"
         disabled={!stripe || loading}
-        className="bg-indigo-600 text-white px-4 py-2 rounded-md w-full"
+        className="bg-black text-white px-4 py-2 rounded-md w-full"
       >
         {loading ? 'Processing...' : `Subscribe to ${plan}`}
       </button>
@@ -82,13 +82,13 @@ const Subscription = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 pt-32">
       <div className="max-w-4xl mx-auto px-4">
         <h1 className="text-3xl font-bold text-center mb-8">Choose Your Plan</h1>
         <div className="grid md:grid-cols-2 gap-8">
           {plans.map((plan, i) => (
             <div key={i} className="bg-white p-6 rounded-lg shadow-lg">
-              {plan.popular && <div className="bg-indigo-600 text-white text-center py-2">MOST POPULAR</div>}
+              {plan.popular && <div className="bg-black text-white text-center py-2">MOST POPULAR</div>}
               <h2 className="text-2xl font-bold mb-2">{plan.name}</h2>
               <p className="text-4xl font-bold mb-4">₹{plan.price}</p>
               {user?.subscription?.active && user.subscription.plan === plan.name.toLowerCase() ? (
