@@ -2,12 +2,13 @@ const nodemailer = require("nodemailer");
 const Otp = require("../models/Otp");
 require("dotenv").config();
 
-// ----------- Create transporter (Gmail App Password) -----------
+// ----------- Create transporter (SendGrid SMTP) -----------
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.sendgrid.net",
+  port: 587,
   auth: {
-    user: process.env.GMAIL_SENDER,   // Gmail email
-    pass: process.env.GMAIL_PASSWORD, // Gmail App Password
+    user: "apikey", // fixed SendGrid username
+    pass: process.env.SENDGRID_API_KEY, // your SendGrid API key from environment variables
   },
 });
 
@@ -31,15 +32,13 @@ const sendOTP = async (req, res) => {
 
     // Send email
     const mailOptions = {
-      from: `PGtoHome <${process.env.GMAIL_SENDER}>`,
+      from: `PGtoHome <${process.env.SENDGRID_SENDER}>`,
       to: email,
       subject: "PGtoHome Email Verification OTP",
       text: `Your PGtoHome OTP is: ${otp}`,
     };
 
     await transporter.sendMail(mailOptions);
-
-    console.log(`OTP ${otp} sent to ${email}`); // For debugging in Render logs
 
     return res.json({ success: true, message: "OTP Sent Successfully" });
   } catch (err) {
@@ -67,14 +66,11 @@ const verifyOTP = async (req, res) => {
       return res.status(404).json({ success: false, message: "OTP not found" });
     }
 
-    if (record.otp != otp) { // allow string/number comparison
+    if (record.otp != otp) {
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
 
     await Otp.deleteOne({ email });
-
-    console.log(`OTP verified for ${email}`); // Debug
-
     return res.json({ success: true, message: "OTP Verified" });
   } catch (err) {
     console.error("Error verifying OTP:", err);
