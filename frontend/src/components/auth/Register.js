@@ -5,10 +5,11 @@ import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
 import { ArrowLeft } from "lucide-react";
 import image1 from "../../images/image1.jpg";
-import { toast } from "react-toastify";
+
 const Register = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -80,14 +81,15 @@ const Register = () => {
         email: formData.email,
       });
       if (res.data && res.data.success) {
-        toast.success("OTP sent to your email.");
+        setOtpSent(true);
+        alert("OTP sent to your email.");
         setStep(3);
       } else {
-        toast.error(res.data.message || "Failed to send OTP");
+        alert(res.data.message || "Failed to send OTP");
       }
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to send OTP";
-        toast.error(msg);
+      alert(msg);
     } finally {
       setLoading(false);
     }
@@ -101,14 +103,14 @@ const Register = () => {
         otp: formData.otp,
       });
       if (res.data && res.data.success) {
-         toast.success("OTP verified successfully. Continue registration.");
+        alert("OTP verified. Continue registration.");
         setStep(4);
       } else {
-       toast.error(res.data.message || "OTP verification failed");
+        alert(res.data.message || "OTP verification failed");
       }
     } catch (err) {
       const msg = err.response?.data?.message || "OTP verification failed";
-       toast.error(msg);
+      alert(msg);
     } finally {
       setLoading(false);
     }
