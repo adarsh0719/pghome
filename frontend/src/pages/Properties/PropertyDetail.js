@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import LiveVideoTour from '../../components/property/LiveVideoTour'; // make sure the path is correct
-import BookingPayment from '../Payment/BookingPayment'; 
+
 
 const PropertyDetail = () => {
   const { id } = useParams();
@@ -55,22 +55,7 @@ const PropertyDetail = () => {
       toast.info('Please login to book a visit');
       return;
     }
-
-    try {
-      // Create booking first
-      console.log("Creating booking for property:", property._id);
-      const res = await axios.post(
-        '/api/bookings',
-        { propertyId: property._id, checkIn: new Date().toISOString(), duration: 1 }, // adjust checkIn & duration as needed
-        { headers: { Authorization: `Bearer ${user.token}` } }
-      );
-     console.log("Booking created:", res.data);
-      setBookingId(res.data._id);
-      setPaymentModalActive(true); // open payment modal
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Booking failed');
-    }
+    navigate('/booking-checkout', { state: { property } });
   };
 
 
@@ -322,6 +307,7 @@ const PropertyDetail = () => {
     >
       Delete Property
     </button>
+    <Link to='/owner-bookings'>dbsj</Link>
   </div>
 )}
 
@@ -359,27 +345,6 @@ const PropertyDetail = () => {
     </div>
   </div>
 )}
-
-
-  {paymentModalActive && bookingId && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
-          <div className="bg-white p-4 rounded-lg relative w-[90%] max-w-md">
-            <button
-              onClick={() => setPaymentModalActive(false)}
-              className="absolute top-2 right-2 text-red-500 font-bold text-xl"
-            >
-              ✕
-            </button>
-            <BookingPayment
-              bookingId={bookingId}
-              onSuccess={() => {
-                setPaymentModalActive(false);
-                toast.success('Booking confirmed and payment successful!');
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

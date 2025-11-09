@@ -15,36 +15,41 @@ const sendOTP = async (req, res) => {
         .json({ success: false, message: "Email is required" });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000);
+    // Generate OTP as string
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
 
+    // Save or update OTP in DB
     await Otp.findOneAndUpdate(
       { email },
       {
         otp,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // valid for 10 min
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // valid 10 min
       },
       { upsert: true, new: true }
     );
 
+    // Prepare email
     const msg = {
       to: email,
-      from: process.env.SENDGRID_SENDER, // must match verified sender
+      from: process.env.SENDGRID_SENDER, // must be verified sender
       subject: "PGtoHome Email Verification OTP",
       text: `Your OTP is ${otp}. It’s valid for 10 minutes.`,
       html: `<p>Your <b>PGtoHome</b> OTP is <strong>${otp}</strong>.<br/>It expires in 10 minutes.</p>`,
     };
 
-    await sgMail.send(msg);
+    // Send email and log full SendGrid response
+    const response = await sgMail.send(msg);
+    console.log("SendGrid response:", response); // ✅ This logs detailed info
 
     return res.json({ success: true, message: "OTP sent successfully" });
   } catch (err) {
     console.error("Error sending OTP:", err);
-    if (err.response) console.error(err.response.body);
     return res
       .status(500)
       .json({ success: false, message: "Failed to send OTP", error: err.message });
   }
 };
+
 
 // ----------- VERIFY OTP -----------
 const verifyOTP = async (req, res) => {

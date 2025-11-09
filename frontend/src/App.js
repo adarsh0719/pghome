@@ -23,8 +23,11 @@ import Footer from './pages/homepage/Footer';
 import KycWaiting from './pages/kyc/KycWaiting';
 import LandingPage from './pages/Roommate/LandingPage';
 import ProfileInDetail from './pages/profileview/ProfileInDetail';
+import BookingCheckOut from './pages/Payment/BookingCheckOut';
+import PaymentSuccess from './pages/Payment/PaymentSuccess';
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
+import OwnerBookings from './pages/Payment/OwnerBookings';
 
 
 const queryClient = new QueryClient();
@@ -163,6 +166,22 @@ function App() {
                 <ProtectedRoute>
                   <ProfileInDetail />
                 </ProtectedRoute>
+              } />
+
+              <Route path="/booking-checkout" element={
+                <ProtectedRoute>
+                  <BookingCheckOut />
+                </ProtectedRoute>
+              } />
+              <Route path="/payment-success" element={
+                  <PublicRoute>
+                  <PaymentSuccess />
+                 </PublicRoute>
+              } />
+              <Route path="/owner-bookings" element={
+                 <ProtectedRoute>
+                  <OwnerBookings/>
+                 </ProtectedRoute>
               } />
               
               

@@ -39,6 +39,7 @@ const LiveVideoTourinstructions = () => {
           >
             Browse Properties
           </Link>
+          
         </div>
       </div>
     </div>

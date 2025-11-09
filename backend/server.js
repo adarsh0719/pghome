@@ -59,7 +59,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/properties', require('./routes/properties'));
 app.use('/api/contact', require('./routes/contact'));
-app.use('/api/bookings', require('./routes/bookings'));
+app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/roommate', require('./routes/roommate'));
 app.use('/api/kyc', require('./routes/kyc'));

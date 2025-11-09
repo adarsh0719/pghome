@@ -227,7 +227,9 @@ const ProfileInDetail = () => {
                       <div className="text-blue-700 font-medium text-sm sm:text-base">
                         Monthly Budget
                       </div>
+                      
                     </div>
+                    <div>vdrvdr</div>
                   </div>
                 </motion.div>
               )}
