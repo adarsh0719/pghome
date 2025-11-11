@@ -5,11 +5,11 @@ const Property = require('../models/Property');
 const { protect } = require('../middleware/auth');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const crypto = require('crypto');
-
-// 🎟️ Create Checkout Session
+const User = require('../models/User'); 
+//  Create Checkout Session
 router.post('/create-session', protect, async (req, res) => {
   try {
-    const { propertyId, type, months } = req.body;
+    const { propertyId, type, months, partnerEmail } = req.body;
 
     const property = await Property.findById(propertyId).populate('owner');
     if (!property) return res.status(404).json({ message: 'Property not found' });
@@ -17,11 +17,21 @@ router.post('/create-session', protect, async (req, res) => {
     const basePrice = property.rent * months;
     const totalAmount = type === 'double' ? basePrice * 2 : basePrice;
 
-    // Create booking (pending)
+    // Prepare booking users
+    const bookedBy = [req.user._id];
+    if (type === 'double' && partnerEmail) {
+      const partner = await User.findOne({ email: partnerEmail });
+      if (!partner) {
+        return res.status(400).json({ message: 'Partner email not found' });
+      }
+      bookedBy.push(partner._id);
+    }
+
+    // Create pending booking
     const booking = await Booking.create({
       property: property._id,
       owner: property.owner._id,
-      bookedBy: [req.user._id],
+      bookedBy,
       type,
       months,
       totalAmount,
@@ -47,7 +57,6 @@ router.post('/create-session', protect, async (req, res) => {
       metadata: { bookingId: booking._id.toString(), userId: req.user._id.toString() },
     });
 
-    // Save session id
     booking.stripeSessionId = session.id;
     await booking.save();
 
@@ -58,7 +67,8 @@ router.post('/create-session', protect, async (req, res) => {
   }
 });
 
-// ✅ Verify Payment and Generate Coupon
+
+//  Verify Payment and Generate Coupon
 router.get('/verify-payment', async (req, res) => {
   try {
     const session = await stripe.checkout.sessions.retrieve(req.query.session_id);
@@ -89,6 +99,20 @@ router.get('/owner/:ownerId', async (req, res) => {
     .populate('property')
     .populate('bookedBy', 'name email');
   res.json(bookings);
+});
+
+router.get('/my-coupon/:userId', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ bookedBy: req.params.userId, status: 'paid' })
+      .sort({ createdAt: -1 })
+      .select('coupon');
+
+    if (!booking || !booking.coupon) return res.json({ message: 'No coupon found' });
+    res.json({ coupon: booking.coupon });
+  } catch (error) {
+    console.error('Error fetching coupon:', error);
+    res.status(500).json({ message: 'Failed to fetch coupon' });
+  }
 });
 
 

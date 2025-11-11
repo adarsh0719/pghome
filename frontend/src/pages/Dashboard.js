@@ -1,10 +1,24 @@
-import React from 'react';
+import React, { useEffect, useState } from "react";
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 const Dashboard = () => {
   const { user, logout } = useAuth();
-
+ const navigate = useNavigate();
+ const [coupon, setCoupon] = useState(null);
+ useEffect(() => {
+  const fetchCoupon = async () => {
+    if (!user?._id) return;
+    try {
+      const { data } = await axios.get(`/api/bookings/my-coupon/${user._id}`);
+      if (data?.coupon) setCoupon(data.coupon);
+    } catch (error) {
+      console.error("Error fetching coupon:", error);
+    }
+  };
+  fetchCoupon();
+}, [user]);
   const handleLogout = async () => {
     await logout();
   };
@@ -27,25 +41,38 @@ const Dashboard = () => {
           </button>
         </div>
 
-        {/* User Info Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 flex items-center space-x-6">
-          <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow">
-            {user?.name?.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h2 className="text-2xl font-semibold text-gray-900">{user?.name}</h2>
-            <p className="text-gray-600 capitalize">{user?.userType}</p>
-            <p className="text-gray-600">{user?.email}</p>
-            {user?.isBlueTick && (
-              <span className="inline-flex items-center px-3 py-1 mt-2 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">
-                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Verified User
-              </span>
-            )}
-          </div>
-        </div>
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 sm:space-x-6">
+  {/* Left side - Avatar and User Info */}
+  <div className="flex items-center space-x-6">
+    <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow">
+      {user?.name?.charAt(0).toUpperCase()}
+    </div>
+    <div>
+      <h2 className="text-2xl font-semibold text-gray-900">{user?.name}</h2>
+      <p className="text-gray-600 capitalize">{user?.userType}</p>
+      <p className="text-gray-600">{user?.email}</p>
+
+      {user?.isBlueTick && (
+        <span className="inline-flex items-center px-3 py-1 mt-2 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">
+          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Verified User
+        </span>
+      )}
+    </div>
+  </div>
+
+  {/* Right side - Owner Panel button */}
+  {user?.userType === "owner" && (
+    <button
+      onClick={() => navigate("/owner-bookings")}
+      className="bg-[#d16729] hover:bg-[#b5571f] text-white font-semibold px-8 py-3 rounded-lg transition duration-200"
+    >
+      Owner Panel
+    </button>
+  )}
+</div>
 
         {/* Quick Actions */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -93,8 +120,24 @@ const Dashboard = () => {
             <div>
               <h3 className="font-semibold text-gray-900">Roommate Finder</h3>
               <p className="text-sm text-gray-500">Find compatible roommates</p>
+              
             </div>
+            
           </Link>
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition">
+  <h3 className="text-xl font-semibold text-gray-900 mb-4">My Coupon</h3>
+
+  {coupon ? (
+    <div className="relative inline-block mt-2 px-5 py-3 bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 text-white font-mono tracking-widest text-lg rounded-md shadow-inner border border-gray-600 select-all">
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/noise.png')] opacity-10 rounded-md"></div>
+      <span className="relative z-10">
+        {coupon.toUpperCase()}
+      </span>
+    </div>
+  ) : (
+    <p className="text-gray-500">No coupon found yet.</p>
+  )}
+</div>
         </div>
 
         {/* KYC Status */}

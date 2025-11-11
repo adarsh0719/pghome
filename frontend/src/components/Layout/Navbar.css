@@ -1,4 +1,4 @@
-/* Navbar base */
+/* ================= BASE ================= */
 .navbar {
   position: fixed;
   top: 0;
@@ -8,6 +8,13 @@
   align-items: center;
   justify-content: space-between;
   z-index: 50;
+}
+
+.nav-link {
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  transition: color 0.3s ease;
 }
 
 /* Logo */
@@ -21,34 +28,7 @@
   color: #d16729;
 }
 
-/* Center Glass Nav */
-.glass-navbar {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(14px);
-  border-radius: 16px;
-  padding: 10px 35px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-.nav-link {
-  text-decoration: none;
-  color: #222;
-  font-weight: 600;
-  font-size: 15px;
-}
-.nav-link:hover {
-  color: #d16729;
-}
-
 /* Right Section */
-.navbar-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
 .login-btn {
   padding: 8px 18px;
   color: #222;
@@ -79,12 +59,7 @@
   opacity: 0.9;
 }
 
-/* Spacer */
-.navbar-spacer {
-  height: 70px;
-}
-
-/* ================= MOBILE STYLES ================= */
+/* ================= MOBILE ================= */
 @media (max-width: 768px) {
   .hamburger {
     display: flex;
@@ -113,20 +88,10 @@
     transform: rotate(-45deg) translate(5px, -5px);
   }
 
-  .glass-navbar,
-  .navbar-right {
-    display: none !important;
-  }
-
   .navbar {
     flex-direction: row;
     justify-content: space-between;
     padding: 10px 20px;
-  }
-
-  .navbar-logo {
-    font-size: 28px;
-    font-weight: bold;
   }
 
   /* Mobile menu */
@@ -134,11 +99,12 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 12px 20px;
+    padding: 15px 20px;
     background-color: white;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    position: absolute;
+    position: fixed;
     top: 70px;
+    left: 0;
     width: 100%;
     z-index: 40;
   }
@@ -154,10 +120,26 @@
     color: #d16729;
   }
 
-  .mobile-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 10px;
+  .login-btn-mobile {
+    color: #222;
+    background: transparent;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+  }
+
+  .signup-btn-mobile {
+    background: #d16729;
+    color: white;
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    margin-top: 6px;
+  }
+
+  .signup-btn-mobile:hover {
+    background: #222;
   }
 }

@@ -6,47 +6,65 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import ChatWindow from '../../components/chat/ChatWindow';
+import { useNavigate } from "react-router-dom";
 
 const ProfileInDetail = () => {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user} = useAuth();
   const [profile, setProfile] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('none');
   const [chatId, setChatId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const navigate = useNavigate();
+useEffect(() => {
+  const fetchProfile = async () => {
+    try {
+      const { data } = await axios.get(`/api/roommate/profile/${id}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      console.log("📦 Profile data fetched:", data);
+      setProfile(data);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
+      // Fetch connection status separately
       try {
-        const { data } = await axios.get(`/api/roommate/profile/${id}`, {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-        setProfile(data);
-
         const statusRes = await axios.get(`/api/connections/status/${data.user._id}`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
         setConnectionStatus(statusRes.data.status);
-      } catch {
-        toast.error('Failed to load profile');
+      } catch (err) {
+        console.warn('⚠️ Could not fetch connection status:', err.response?.data || err.message);
+        setConnectionStatus('none'); // default fallback
       }
-    };
-    fetchProfile();
-  }, [id, user]);
 
-  const handleSendRequest = async () => {
-    try {
-      await axios.post(
-        '/api/connections/send',
-        { receiverId: profile.user._id },
-        { headers: { Authorization: `Bearer ${user.token}` } }
-      );
-      toast.success('Connection request sent!');
-      setConnectionStatus('pending');
-    } catch {
-      toast.error('Unable to send request');
+    } catch (err) {
+      console.error('❌ Error fetching profile:', err.response?.data || err.message);
+      toast.error('Failed to load profile');
     }
   };
+
+  fetchProfile();
+}, [id, user]);
+
+
+  const handleSendRequest = async () => {
+  // Safety check: make sure profile and user._id exist
+  if (!profile?.user?._id) {
+    return toast.error('Profile not loaded properly');
+  }
+
+  try {
+    await axios.post(
+  '/api/connections/send',
+  { receiverId: profile.user._id },
+  { headers: { Authorization: `Bearer ${user.token}` } }
+);
+    toast.success('Connection request sent!');
+    setConnectionStatus('pending');
+  } catch (err) {
+    console.error('Send request error:', err.response?.data || err.message);
+    toast.error(err.response?.data?.message || 'Unable to send request');
+  }
+};
 
   const handleStartChat = async () => {
     try {
@@ -229,7 +247,27 @@ const ProfileInDetail = () => {
                       </div>
                       
                     </div>
-                    <div>vdrvdr</div>
+             {profile.currentProperty ? (
+  <div className="mt-4 flex flex-col gap-2">
+    <div>
+      <span className="font-semibold text-gray-700">Currently Staying At: </span>
+      <span className="text-gray-800">{profile.currentProperty.title}</span>
+    </div>
+
+    <button
+      onClick={() => navigate(`/properties/${profile.currentProperty._id}`)}
+      className="bg-[#d16729] hover:bg-[#b95520] text-white px-6 py-2 rounded-lg text-base font-semibold transition duration-200 shadow-md w-fit"
+    >
+      Go to Property
+    </button>
+  </div>
+) : (
+  <div className="mt-4 text-gray-500">Not staying at any PG currently</div>
+)}
+
+
+
+
                   </div>
                 </motion.div>
               )}

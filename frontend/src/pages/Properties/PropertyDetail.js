@@ -55,6 +55,10 @@ const PropertyDetail = () => {
       toast.info('Please login to book a visit');
       return;
     }
+     if (user._id === property.owner?._id) {
+     toast.info("You are the owner of this property.");
+     return;
+    }
     navigate('/booking-checkout', { state: { property } });
   };
 
@@ -236,37 +240,38 @@ const PropertyDetail = () => {
                   </div>
 
                   <div className="space-y-4">
-                    {user ? (
-                      <>
-                        <button
-                          onClick={handleContactOwner}
-                          className="w-full bg-[#c17041] text-white py-3 rounded-lg font-semibold transition"
-                        >
-                          Contact Owner
-                        </button>
-                        
-                        {property.liveViewAvailable && (
-                          <button
-                            onClick={() => setLiveTourActive(true)}
-                            className="w-full bg-gray-500 text-white py-3 rounded-lg font-semibold hover:black transition"
-                          >
-                            Live Video Tour
-                          </button>
-                        )}
-                        <button className="w-full border border-[#c17041] text-[#c17041] py-3 rounded-lg font-semibold hover:bg-white transition"
-                         onClick={handleBooking}>
-                          Book Now!
-                        </button>
+                   {user ? (
+  <>
+    <button
+      onClick={handleContactOwner}
+      className="w-full bg-[#c17041] text-white py-3 rounded-lg font-semibold transition"
+    >
+      Contact Owner
+    </button>
+    
+    {property.liveViewAvailable && (
+      <button
+        onClick={() => setLiveTourActive(true)}
+        className="w-full bg-gray-500 text-white py-3 rounded-lg font-semibold hover:black transition"
+      >
+        Live Video Tour
+      </button>
+    )}
+    <button className="w-full border border-[#c17041] text-[#c17041] py-3 rounded-lg font-semibold hover:bg-white transition"
+     onClick={handleBooking}>
+      Book Now!
+    </button>
+  </>
+) : (
+  <Link
+    to="/login"
+    className="block w-full bg-[#d16729] text-white py-3 rounded-lg font-semibold hover:bg-black transition text-center"
+  >
+    Login to Contact
+  </Link>
+)}
 
-                      </>
-                    ) : (
-                      <Link
-                        to="/login"
-                        className="block w-full bg-[#d16729] text-white py-3 rounded-lg font-semibold hover:bg-black transition text-center"
-                      >
-                        Login to Contact
-                      </Link>
-                    )}
+
                   </div>
 
                   {/* Quick Info */}
@@ -307,7 +312,7 @@ const PropertyDetail = () => {
     >
       Delete Property
     </button>
-    <Link to='/owner-bookings'>dbsj</Link>
+    
   </div>
 )}
 

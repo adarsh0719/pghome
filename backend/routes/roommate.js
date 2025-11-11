@@ -170,16 +170,68 @@ router.get('/matches', authMiddleware, async (req, res) => {
   }
 });
 // Get profile by user ID (for viewing others' profiles)
-router.get('/profile/:id', authMiddleware, async (req, res) => {
+// Node.js / Express example
+const Booking = require('../models/Booking');
+
+router.get('/profile/:id', async (req, res) => {
   try {
-    const profile = await RoommateProfile.findOne({ user: req.params.id }).populate('user', 'name email');
-    if (!profile) return res.status(404).json({ message: 'Profile not found' });
+    const profileDoc = await RoommateProfile.findOne({ user: req.params.id })
+      .populate('user', 'name email _id');
+
+    if (!profileDoc) return res.status(404).json({ message: "Profile not found" });
+
+    // Find current property from booking
+    const currentBooking = await Booking.findOne({
+      bookedBy: req.params.id,
+      status: 'paid'
+    }).populate('property');
+
+    // Convert mongoose document to plain object
+    const profile = profileDoc.toObject();
+    profile.currentProperty = currentBooking?.property || null;
+
     res.json(profile);
   } catch (err) {
-    console.error('Profile fetch by ID error:', err);
-    res.status(500).json({ message: 'Server error while fetching profile' });
+    console.error("Error fetching profile:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
+router.put("/profile", authMiddleware, upload.single("image"), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const existing = await RoommateProfile.findOne({ user: userId }).populate("user");
+
+    if (!existing) return res.status(404).json({ message: "Profile not found" });
+
+    // ✅ Update user name if provided
+    if (req.body.name) {
+      const user = await User.findById(userId);
+      user.name = req.body.name;
+      await user.save();
+      existing.user = user; // reattach updated user
+    }
+
+    // ✅ Handle image (as before)
+    if (req.file) {
+      const imageUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+      existing.images = [imageUrl];
+    }
+
+    existing.age = req.body.age || existing.age;
+    existing.gender = req.body.gender || existing.gender;
+    existing.budget = req.body.budget || existing.budget;
+    existing.bio = req.body.bio || existing.bio;
+
+    await existing.save();
+    res.json(await existing.populate("user"));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+
 
 
 module.exports = router;
