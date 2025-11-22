@@ -108,14 +108,19 @@ router.get('/test-token', protect, (req, res) => {
 router.get('/me', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
+
     res.json({
       status: "success",
-      user
+      data: {
+        user
+      }
     });
+
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 router.post("/send-otp", sendOTP);
 router.post("/verify-otp", verifyOTP);

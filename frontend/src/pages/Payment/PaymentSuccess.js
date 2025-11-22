@@ -21,7 +21,7 @@ const PaymentSuccess = () => {
         setIsLoading(false);
         setShowConfetti(true);
       } catch (error) {
-        console.error("❌ Payment verification failed:", error);
+        console.error(" Payment verification failed:", error);
         setIsLoading(false);
       }
     };

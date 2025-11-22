@@ -28,8 +28,9 @@ import PaymentSuccess from './pages/Payment/PaymentSuccess';
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
 import OwnerBookings from './pages/Payment/OwnerBookings';
-
-
+import { SocketProvider } from './context/SocketContext'; 
+import NotificationHandler from './components/notifications/NotificationHandler';
+import NotificationsPage from './pages/notifypage/NotificationsPage';
 const queryClient = new QueryClient();
 
 // Protected Route Component
@@ -90,7 +91,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+           <SocketProvider>
           <div className="App">
+             <NotificationHandler />
             {!hideNavbar && <Navbar/>}
             <div className="main-content ">
             <Routes>
@@ -183,12 +186,18 @@ function App() {
                   <OwnerBookings/>
                  </ProtectedRoute>
               } />
+              <Route path="/notifications" element={
+                <ProtectedRoute>
+                  <NotificationsPage />
+                </ProtectedRoute>
+              } />
               
               
             </Routes>
             </div>
             <ToastContainer position="bottom-right" />
           </div>
+           </SocketProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

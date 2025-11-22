@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 
 const ProfilePopup = ({ onClose }) => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [profile, setProfile] = useState(null);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -21,7 +21,7 @@ const ProfilePopup = ({ onClose }) => {
     const fetchProfile = async () => {
       try {
         const { data } = await axios.get("/api/roommate/profile", {
-          headers: { Authorization: `Bearer ${user.token}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
         setProfile(data);
         setFormData({
@@ -50,7 +50,7 @@ const ProfilePopup = ({ onClose }) => {
 
       const { data } = await axios.put("/api/roommate/profile", form, {
         headers: {
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });

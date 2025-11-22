@@ -22,7 +22,7 @@ useEffect(() => {
       const { data } = await axios.get(`/api/roommate/profile/${id}`, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
-      console.log("📦 Profile data fetched:", data);
+      console.log(" Profile data fetched:", data);
       setProfile(data);
 
       // Fetch connection status separately
@@ -32,12 +32,12 @@ useEffect(() => {
         });
         setConnectionStatus(statusRes.data.status);
       } catch (err) {
-        console.warn('⚠️ Could not fetch connection status:', err.response?.data || err.message);
+        console.warn(' Could not fetch connection status:', err.response?.data || err.message);
         setConnectionStatus('none'); // default fallback
       }
 
     } catch (err) {
-      console.error('❌ Error fetching profile:', err.response?.data || err.message);
+      console.error(' Error fetching profile:', err.response?.data || err.message);
       toast.error('Failed to load profile');
     }
   };

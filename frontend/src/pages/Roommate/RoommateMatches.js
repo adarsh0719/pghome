@@ -7,7 +7,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Footer from '../homepage/Footer';
 import { useNavigate } from 'react-router-dom';
 import ReceivedRequests from './ReceivedRequests';
+import SentRequests from '../../components/notifications/SentRequests';
 
+
+
+// 📌 Haversine distance function
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c); // km
+};
 
 
 const RoommateMatches = () => {
@@ -23,16 +42,47 @@ const RoommateMatches = () => {
   const cardRef = useRef(null);
   const currentMatch = matches[currentIndex] || null;
   const currentImages = currentMatch?.profile?.images || [];
+const [myProfile, setMyProfile] = useState(null);
 
   
+
+
+const updateMyLocation = async () => {
+  if (!user) return;
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { latitude, longitude } = pos.coords;
+
+    try {
+      await axios.put(
+        "/api/roommate/update-coordinates",
+        { latitude, longitude },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+
+      console.log("Coordinates updated:", latitude, longitude);
+    } catch (err) {
+      console.error("Failed to update coordinates:", err);
+    }
+  });
+};
+
+useEffect(() => {
+  if (user) {
+    updateMyLocation();
+  }
+}, [user]);
+
 
   // Fetch user profile
   const fetchProfile = useCallback(async () => {
     if (!user) return setProfileCreated(false);
     try {
-      await axios.get('/api/roommate/profile', {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
+        const { data } = await axios.get("/api/roommate/profile", {
+      headers: { Authorization: `Bearer ${user.token}` }
+    });
+      console.log(data);
+      setMyProfile(data);  
       setProfileCreated(true);
     } catch {
       setProfileCreated(false);
@@ -47,17 +97,38 @@ const RoommateMatches = () => {
       const { data } = await axios.get('/api/roommate/matches', {
         headers: { Authorization: `Bearer ${user.token}` },
       });
-      setMatches(data);
+      console.log("MATCH RESPONSE:", data);
+     const updated = data.map((m) => {
+  const myLat = myProfile?.coordinates?.coordinates?.[1];   // logged-in user
+  const myLng = myProfile?.coordinates?.coordinates?.[0];
+  console.log(myLat);
+  console.log(myLng);
+console.log('gap');
+  const theirLat = m.profile?.coordinates?.coordinates?.[1];
+  const theirLng = m.profile?.coordinates?.coordinates?.[0];
+ console.log(theirLat);
+ console.log(theirLng);
+  const distance = getDistance(myLat, myLng, theirLat, theirLng);
+
+  return { ...m, distance };
+});
+setMatches(updated);
+
     } catch (err) {
       console.error(err);
       toast.error(err?.response?.data?.message || 'Failed to fetch matches');
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, myProfile]);
 
   useEffect(() => { if (user) fetchProfile(); }, [user, fetchProfile]);
-  useEffect(() => { if (profileCreated) fetchMatches(); }, [profileCreated, fetchMatches]);
+ useEffect(() => {
+  if (profileCreated && myProfile) {
+    fetchMatches();
+  }
+}, [profileCreated, myProfile, fetchMatches]);
+
   useEffect(() => { setImageIndex(0); }, [currentIndex]);
 
   // Swipe logic
@@ -175,7 +246,11 @@ const RoommateMatches = () => {
                           {currentMatch.profile.user?.name}{formatAgeAndGender(currentMatch.profile)}
                         </h2>
                         <div className="flex items-center space-x-6 text-white/90 text-base">
-                          <span>{currentMatch.profile.location || 'Location not specified'}</span>
+                          <span>
+  {currentMatch.distance !== null ? `${currentMatch.distance} km away` : "Distance unavailable"}
+</span>
+
+
                           <span>₹{currentMatch.profile.budget || 'N/A'}/month</span>
                         </div>
                       </div>
@@ -236,6 +311,14 @@ const RoommateMatches = () => {
             <h2 className="text-xl font-semibold text-gray-800 mb-3 text-center">Connection Requests</h2>
             <div className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               <ReceivedRequests />
+            </div>
+          </div>
+
+
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-5">
+            <h2 className="text-xl font-semibold text-gray-800 mb-3 text-center">sent Requests</h2>
+            <div className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <SentRequests/>
             </div>
           </div>
         </div>

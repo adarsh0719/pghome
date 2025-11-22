@@ -62,12 +62,16 @@ const PropertyCard = ({ property }) => {
 
         {/* Rating & CTA */}
         <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <span className="text-yellow-400">★</span>
-            <span className="ml-1 text-sm text-gray-600 font-medium">
-              {property.rating?.average || "New"}
-            </span>
-          </div>
+         <div className="flex items-center bg-black rounded-full px-3 py-1 shadow-sm border border-gray-700">
+  <span className="text-yellow-400 text-lg leading-tight">★</span>
+  <span className="ml-1 text-sm font-semibold text-white">
+    {property.rating?.average > 0
+      ? `${Number(property.rating.average).toFixed(1)} • ${property.rating.count} reviews`
+      : "New Listing"}
+  </span>
+</div>
+
+
 
           <span className="text-sm font-medium text-[#E28955] hover:text-[#cf6e37] transition">
             View Details →

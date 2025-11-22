@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
 import ProfilePopup from "./ProfilePopup";
 import "./Navbar.css";
-
+import { IoNotificationsOutline } from "react-icons/io5"; 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -77,6 +77,9 @@ const Navbar = () => {
         <div className="hidden md:flex items-center space-x-4">
           {user ? (
             <>
+            <Link to="/notifications" className="text-xl">
+                 <IoNotificationsOutline />
+              </Link>
               <span className="text-gray-700">
                 Hi, {user.name.split(" ")[0]}
               </span>

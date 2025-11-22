@@ -10,28 +10,34 @@ const Properties = () => {
 
   // Fetch properties — accepts optional filters
   const fetchProperties = async (filters = {}) => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
+  try {
+    setLoading(true);
 
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
-          if (Array.isArray(value) && value.length > 0) {
-            params.append(key, value.join(','));
-          } else if (!Array.isArray(value)) {
-            params.append(key, value);
-          }
+    const params = new URLSearchParams();
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        if (Array.isArray(value) && value.length > 0) {
+          params.append(key, value.join(","));
+        } else if (!Array.isArray(value)) {
+          params.append(key, value);
         }
-      });
+      }
+    });
 
-      const response = await axios.get(`/api/properties?${params}`);
-      setProperties(response.data);
-    } catch (error) {
-      console.error('Error fetching properties:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const response = await axios.get(`/api/properties?${params}`);
+    let list = response.data;
+
+  
+
+    setProperties(list);
+  } catch (error) {
+    console.error("Error fetching properties:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Fetch all properties initially
   useEffect(() => {

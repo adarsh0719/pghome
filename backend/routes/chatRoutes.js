@@ -57,7 +57,7 @@ router.post('/:chatId/message', protect, async (req, res) => {
     chat.messages.push(message);
     await chat.save();
 
-    // ✅ Correct populate syntax (no execPopulate)
+    
     await chat.populate({ path: 'messages.sender', select: 'name _id' });
 
     res.json(chat.messages[chat.messages.length - 1]);

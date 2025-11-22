@@ -1,4 +1,3 @@
-// models/RoommateProfile.js
 const mongoose = require('mongoose');
 
 const RoommateProfileSchema = new mongoose.Schema({
@@ -24,7 +23,27 @@ const RoommateProfileSchema = new mongoose.Schema({
 
   images: [{ type: String }], // URLs or base64 data-uris
 
+  // Human-readable location (optional)
+  location: { type: String },
+
+  // GeoJSON Point for spatial queries and accurate coordinates
+  // Stored as: { type: 'Point', coordinates: [lon, lat] }
+  coordinates: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [0, 0]
+    }
+  },
+
   createdAt: { type: Date, default: Date.now }
 });
+
+// 2dsphere index to enable geospatial queries
+RoommateProfileSchema.index({ coordinates: '2dsphere' });
 
 module.exports = mongoose.model('RoommateProfile', RoommateProfileSchema);

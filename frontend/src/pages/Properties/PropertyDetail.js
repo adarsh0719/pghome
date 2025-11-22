@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import LiveVideoTour from '../../components/property/LiveVideoTour'; // make sure the path is correct
+import ReviewSection from './ReviewSection';
 
 
 const PropertyDetail = () => {
@@ -315,6 +316,9 @@ const PropertyDetail = () => {
     
   </div>
 )}
+{/* Review Section */}
+<ReviewSection propertyId={property._id} />
+
 
           </div>
         </div>

@@ -51,8 +51,8 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/pgtohome'
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch((err) => console.error('❌ MongoDB connection error:', err));
+  .then(() => console.log(' MongoDB connected'))
+  .catch((err) => console.error(' MongoDB connection error:', err));
 
 // Routes (your existing REST endpoints)
 app.use('/api/auth', require('./routes/auth'));
@@ -65,17 +65,17 @@ app.use('/api/roommate', require('./routes/roommate'));
 app.use('/api/kyc', require('./routes/kyc'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/connections', require('./routes/connectionRoutes'));
-
-// --- 🔥 SOCKET.IO SETUP (WebRTC + Chat + Notifications) ---
+app.use('/api/reviews',  require('./routes/reviewRoutes'));
+// ---  SOCKET.IO SETUP (WebRTC + Chat + Notifications) ---
 io.on('connection', (socket) => {
-  console.log('🟢 New socket connected:', socket.id);
+  console.log(' New socket connected:', socket.id);
 
   // Register user's socket with their userId
   socket.on('register_user', (userId) => {
     if (!userId) return;
     userSocketMap[userId] = socket.id;
     socket.userId = userId;
-    console.log(`✅ Registered user ${userId} -> socket ${socket.id}`);
+    console.log(` Registered user ${userId} -> socket ${socket.id}`);
   });
 
   // -------- WebRTC signaling for live video rooms --------
@@ -108,7 +108,7 @@ io.on('connection', (socket) => {
   socket.on('join_chat', (chatId) => {
     if (!chatId) return;
     socket.join(chatId);
-    console.log(`💬 ${socket.id} joined chat ${chatId}`);
+    console.log(` ${socket.id} joined chat ${chatId}`);
   });
 
   socket.on('send_message', async (data) => {
@@ -129,20 +129,20 @@ io.on('connection', (socket) => {
 
       // Emit to everyone in chat room
       io.to(chatId).emit('receive_message', { chatId, message });
-      console.log(`💬 Message sent to chat ${chatId}`);
+      console.log(` Message sent to chat ${chatId}`);
     } catch (err) {
-      console.error('❌ Error saving/sending message:', err);
+      console.error(' Error saving/sending message:', err);
     }
   });
 
   // -------- Cleanup on disconnect --------
   socket.on('disconnect', () => {
-    console.log('🔴 Socket disconnected:', socket.id);
+    console.log(' Socket disconnected:', socket.id);
     // remove user mapping
     if (socket.userId) {
       const uid = socket.userId;
       if (userSocketMap[uid] === socket.id) delete userSocketMap[uid];
-      console.log(`🧹 Removed mapping for user ${uid}`);
+      console.log(` Removed mapping for user ${uid}`);
     } else {
       // fallback: remove by value if exists
       for (const uid in userSocketMap) {
@@ -158,7 +158,7 @@ io.on('connection', (socket) => {
 // --- SERVER START ---
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`🚀 Server listening on port ${PORT}`);
+  console.log(` Server listening on port ${PORT}`);
 });
 
 module.exports = server;

@@ -6,7 +6,8 @@ const SearchFilters = ({ onSearch }) => {
     type: '',
     minPrice: '',
     maxPrice: '',
-    amenities: []
+    amenities: [],
+    minRating: ''
   });
 
   const amenitiesList = ['WiFi', 'AC', 'Food', 'Laundry', 'Parking', 'Security', 'Gym', 'Pool'];
@@ -31,13 +32,24 @@ const SearchFilters = ({ onSearch }) => {
     onSearch(localFilters);
   };
 
+  
+
+  const handleRatingSelect = (value) => {
+  setLocalFilters(prev => ({
+    ...prev,
+    minRating: value
+  }));
+};
+
+
   const clearFilters = () => {
     setLocalFilters({
       city: '',
       type: '',
       minPrice: '',
       maxPrice: '',
-      amenities: []
+      amenities: [],
+      minRating: ''
     });
   };
 
@@ -110,6 +122,40 @@ const SearchFilters = ({ onSearch }) => {
           ))}
         </div>
       </div>
+
+      <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Minimum Rating
+  </label>
+
+  <div className="flex gap-2 flex-wrap">
+    {[5, 4, 3, 2, 1].map(star => (
+      <button
+        key={star}
+        onClick={() => handleRatingSelect(star)}
+        className={`flex items-center px-3 py-1 rounded-full border transition ${
+          localFilters.minRating === star
+            ? "bg-[#E28955] text-white font-bold"
+            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+        }`}
+      >
+        <span className="text-yellow-400 mr-1">★</span>
+        {star}+
+      </button>
+    ))}
+  </div>
+</div>
+
+<label className="flex items-center space-x-2">
+  <input
+    type="checkbox"
+    checked={localFilters.sortByNearest}
+    onChange={(e) =>
+      setLocalFilters(prev => ({ ...prev, sortByNearest: e.target.checked }))
+    }
+  />
+  <span>Sort by Nearest</span>
+</label>
 
       <div className="flex space-x-2 mt-4">
         <button

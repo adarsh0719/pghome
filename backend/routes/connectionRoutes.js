@@ -1,15 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const { sendRequest, getRequests, respondRequest } = require('../controllers/connectionController');
-const ConnectionRequest = require('../models/ConnectionRequest');
+const { 
+  sendRequest, 
+  getRequests, 
+  respondRequest, 
+  cancelRequest, 
+  getSentRequests 
+} = require('../controllers/connectionController');
 
-// Existing routes
 router.post('/send', protect, sendRequest);
 router.get('/received', protect, getRequests);
 router.post('/respond', protect, respondRequest);
+router.post('/cancel', protect, cancelRequest);
+router.get('/sent', protect, getSentRequests); // Use the new function
 
-// ✅ New route: Check connection status
+// Connection status check
 router.get('/status/:userId', protect, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -17,16 +23,28 @@ router.get('/status/:userId', protect, async (req, res) => {
 
     const connection = await ConnectionRequest.findOne({
       $or: [
-        { sender: currentUserId, receiver: userId },
-        { sender: userId, receiver: currentUserId },
+        { sender: currentUserId, receiver: userId, status: 'pending' },
+        { sender: userId, receiver: currentUserId, status: 'pending' },
+        { sender: currentUserId, receiver: userId, status: 'accepted' },
+        { sender: userId, receiver: currentUserId, status: 'accepted' }
       ],
     });
 
     if (!connection) {
-      return res.json({ status: 'none' }); // No request yet
+      return res.json({ status: 'none' });
     }
 
-    res.json({ status: connection.status });
+    // Determine the relationship
+    let relationship = 'none';
+    if (connection.status === 'accepted') {
+      relationship = 'connected';
+    } else if (connection.sender.toString() === currentUserId.toString()) {
+      relationship = 'sent';
+    } else if (connection.receiver.toString() === currentUserId.toString()) {
+      relationship = 'received';
+    }
+
+    res.json({ status: relationship, requestId: connection._id });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error checking connection status' });

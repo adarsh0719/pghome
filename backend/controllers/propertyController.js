@@ -29,6 +29,12 @@ exports.getProperties = async (req, res) => {
       const amenitiesArray = req.query.amenities.split(',');
       query.amenities = { $all: amenitiesArray };
     }
+    // Filter by minimum rating
+if (req.query.minRating) {
+  const min = Number(req.query.minRating);
+  query["rating.average"] = { $gte: min };
+}
+
 
     const properties = await Property.find(query).populate('owner', 'name email phone');
     res.json(properties);

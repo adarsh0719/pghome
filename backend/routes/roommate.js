@@ -31,8 +31,10 @@ router.post('/profile', authMiddleware, upload.array('images', 3), async (req, r
   try {
     // body.habits expected as JSON string from frontend
     const {
-      age, gender, budget, durationOfStay, bio, vibeScore
-    } = req.body;
+  age, gender, budget, durationOfStay, bio, vibeScore,
+  location, latitude, longitude
+} = req.body;
+
 
     let habits = {};
     try {
@@ -66,23 +68,32 @@ router.post('/profile', authMiddleware, upload.array('images', 3), async (req, r
     }
 
     const data = {
-      age: Number(age),
-      gender,
-      budget: Number(budget),
-      durationOfStay: Number(durationOfStay),
-      bio,
-      habits: {
-        smoking: Boolean(habits.smoking),
-        drinking: Boolean(habits.drinking),
-        pets: Boolean(habits.pets),
-        parties: Boolean(habits.parties),
-        guests: Boolean(habits.guests),
-        cleanliness: Number(habits.cleanliness || 3),
-        sleepSchedule: habits.sleepSchedule || 'flexible'
-      },
-      vibeScore: Number(vibeScore || 5),
-      images: imageUrls
-    };
+  age: Number(age),
+  gender,
+  budget: Number(budget),
+  durationOfStay: Number(durationOfStay),
+  bio,
+  location: location || "",
+  coordinates: {
+    type: "Point",
+    coordinates: [
+      parseFloat(longitude) || 0,
+      parseFloat(latitude) || 0
+    ]
+  },
+  habits: {
+    smoking: Boolean(habits.smoking),
+    drinking: Boolean(habits.drinking),
+    pets: Boolean(habits.pets),
+    parties: Boolean(habits.parties),
+    guests: Boolean(habits.guests),
+    cleanliness: Number(habits.cleanliness || 3),
+    sleepSchedule: habits.sleepSchedule || 'flexible'
+  },
+  vibeScore: Number(vibeScore || 5),
+  images: imageUrls
+};
+
 
     let profile = await RoommateProfile.findOne({ user: req.user._id });
     if (profile) {
@@ -161,7 +172,7 @@ router.get('/matches', authMiddleware, async (req, res) => {
 
         return { profile: p, compatibilityScore: Math.round(Math.max(0, score)) };
       });
-
+    
     scoredProfiles.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
     res.json(scoredProfiles);
   } catch (err) {
@@ -203,7 +214,7 @@ router.put("/profile", authMiddleware, upload.single("image"), async (req, res) 
 
     if (!existing) return res.status(404).json({ message: "Profile not found" });
 
-    // ✅ Update user name if provided
+    //  Update user name if provided
     if (req.body.name) {
       const user = await User.findById(userId);
       user.name = req.body.name;
@@ -211,7 +222,7 @@ router.put("/profile", authMiddleware, upload.single("image"), async (req, res) 
       existing.user = user; // reattach updated user
     }
 
-    // ✅ Handle image (as before)
+    //  Handle image (as before)
     if (req.file) {
       const imageUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
       existing.images = [imageUrl];
@@ -221,6 +232,18 @@ router.put("/profile", authMiddleware, upload.single("image"), async (req, res) 
     existing.gender = req.body.gender || existing.gender;
     existing.budget = req.body.budget || existing.budget;
     existing.bio = req.body.bio || existing.bio;
+    if (req.body.location) existing.location = req.body.location;
+
+if (req.body.latitude && req.body.longitude) {
+  existing.coordinates = {
+    type: "Point",
+    coordinates: [
+      parseFloat(req.body.longitude),
+      parseFloat(req.body.latitude)
+    ]
+  };
+}
+
 
     await existing.save();
     res.json(await existing.populate("user"));
@@ -231,7 +254,37 @@ router.put("/profile", authMiddleware, upload.single("image"), async (req, res) 
 });
 
 
+//------------------------------------------------------
+// AUTO-UPDATE LOCATION when user opens Roommate Finder
+//------------------------------------------------------
 
+
+router.put('/update-coordinates', authMiddleware, async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({ message: "Coordinates missing" });
+    }
+
+    const profile = await RoommateProfile.findOne({ user: req.user._id });
+
+    if (!profile)
+      return res.status(404).json({ message: "Profile not found" });
+
+    profile.coordinates = {
+      type: "Point",
+      coordinates: [parseFloat(longitude), parseFloat(latitude)]
+    };
+
+    await profile.save();
+
+    res.json({ message: "Coordinates updated", profile });
+  } catch (err) {
+    console.error("Update coordinates error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 
 module.exports = router;
