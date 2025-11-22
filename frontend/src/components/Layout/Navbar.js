@@ -41,7 +41,7 @@ const Navbar = () => {
   return (
     <>
       {/* Navbar */}
-      <nav className="navbar bg-white/60 backdrop-blur-md shadow-md fixed top-0 left-0 w-full z-50 px-6 py-3 flex justify-between items-center">
+      <nav className="navbar bg-white/60 backdrop-blur-md shadow-md fixed top-0 left-0 w-full z-50 px-6 py-3 flex justify-between items-center ">
         {/* Logo */}
         <Link to="/" className="navbar-logo text-2xl font-bold text-blue-700">
           PG <span className="text-orange-600">to Home</span>
@@ -127,6 +127,14 @@ const Navbar = () => {
           <Link to="/roommateMatches" className="mobile-link" onClick={() => setMenuOpen(false)}>
             Roommate Finder
           </Link>
+           <Link
+  to="/notifications"
+  className="mobile-link flex justify-center items-center text-2xl py-3"
+  onClick={() => setMenuOpen(false)}
+>
+  <IoNotificationsOutline />
+</Link>
+
 
           {user ? (
             <div className="flex flex-col items-center mt-4">

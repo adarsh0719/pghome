@@ -73,7 +73,6 @@ const ReceivedRequests = () => {
       {requests.length === 0 ? (
         <div className="text-center py-8">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <span className="text-xl">👋</span>
           </div>
           <p className="text-gray-500 font-medium">No new requests</p>
           <p className="text-sm text-gray-400">Connection requests will appear here</p>
