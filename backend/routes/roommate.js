@@ -102,9 +102,16 @@ router.post('/profile', authMiddleware, upload.array('images', 3), async (req, r
       profile = new RoommateProfile({ user: req.user._id, ...data });
     }
 
-    await profile.save();
-    const populated = await profile.populate('user', 'name email');
-    res.json(populated);
+  await profile.save();
+
+//  Save roommateProfile to User document
+await User.findByIdAndUpdate(req.user._id, {
+  roommateProfile: profile._id
+});
+
+const populated = await profile.populate('user', 'name email roommateProfile');
+res.json(populated);
+
   } catch (err) {
     console.error('Profile save error:', err);
     res.status(500).json({ message: 'Server error while saving profile' });

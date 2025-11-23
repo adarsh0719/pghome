@@ -10,6 +10,30 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [profileImage, setProfileImage] = useState("/placeholder.jpg");
+const [notificationCount, setNotificationCount] = useState(0);
+
+
+
+  const fetchNotificationCount = async () => {
+    try {
+      if (!user) return;
+
+      const { data } = await axios.get("/api/connections/received", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+
+      // Only count pending requests
+      const pending = data.filter((r) => r.status === "pending").length;
+
+      setNotificationCount(pending);
+    } catch (err) {
+      console.log("Notification fetch failed");
+    }
+  };
+
+  useEffect(() => {
+    fetchNotificationCount();
+  }, [user]);
 
   useEffect(() => {
     const fetchProfileImage = async () => {
@@ -77,9 +101,16 @@ const Navbar = () => {
         <div className="hidden md:flex items-center space-x-4">
           {user ? (
             <>
-            <Link to="/notifications" className="text-xl">
-                 <IoNotificationsOutline />
-              </Link>
+           <Link to="/notifications" className="relative text-2xl">
+  <IoNotificationsOutline />
+
+  {notificationCount > 0 && (
+    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
+      {notificationCount}
+    </span>
+  )}
+</Link>
+
               <span className="text-gray-700">
                 Hi, {user.name.split(" ")[0]}
               </span>
@@ -129,10 +160,16 @@ const Navbar = () => {
           </Link>
            <Link
   to="/notifications"
-  className="mobile-link flex justify-center items-center text-2xl py-3"
+  className="mobile-link relative flex justify-center items-center text-3xl py-3"
   onClick={() => setMenuOpen(false)}
 >
   <IoNotificationsOutline />
+
+  {notificationCount > 0 && (
+    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
+      {notificationCount}
+    </span>
+  )}
 </Link>
 
 

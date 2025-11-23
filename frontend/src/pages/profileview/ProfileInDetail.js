@@ -128,16 +128,17 @@ useEffect(() => {
                   Request Pending
                 </div>
               )}
-              {connectionStatus === 'accepted' && (
-                <motion.button
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleStartChat}
-                  className="bg-green-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-base font-semibold shadow-md hover:shadow-lg transition-all duration-300"
-                >
-                  Start Chat
-                </motion.button>
-              )}
+             {(connectionStatus === 'connected' || connectionStatus === 'accepted') && (
+  <motion.button
+      whileHover={{ scale: 1.05, y: -2 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={handleStartChat}
+      className="bg-green-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-base font-semibold shadow-md hover:shadow-lg transition-all duration-300"
+  >
+      Start Chat
+  </motion.button>
+)}
+
             </div>
           </div>
 

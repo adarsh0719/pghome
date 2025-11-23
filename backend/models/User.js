@@ -33,6 +33,8 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Property'
   }],
+
+   
  // ... existing schema
   kycStatus: { type: String, enum: ['not_submitted','pending','approved','rejected'], default: 'not_submitted' },
   kycId: { type: mongoose.Schema.Types.ObjectId, ref: 'Kyc' },

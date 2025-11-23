@@ -29,7 +29,6 @@ import PaymentSuccess from './pages/Payment/PaymentSuccess';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import OwnerBookings from './pages/Payment/OwnerBookings';
 import { SocketProvider } from './context/SocketContext'; 
-import NotificationHandler from './components/notifications/NotificationHandler';
 import NotificationsPage from './pages/notifypage/NotificationsPage';
 const queryClient = new QueryClient();
 
@@ -93,7 +92,7 @@ function App() {
       <AuthProvider>
            <SocketProvider>
           <div className="App">
-             <NotificationHandler />
+             
             {!hideNavbar && <Navbar/>}
             <div className="main-content ">
             <Routes>

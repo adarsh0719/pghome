@@ -8,6 +8,7 @@ import Footer from '../homepage/Footer';
 import { useNavigate } from 'react-router-dom';
 import ReceivedRequests from './ReceivedRequests';
 import SentRequests from '../../components/notifications/SentRequests';
+import MyConnections from "./MyConnections";
 
 
 
@@ -305,23 +306,14 @@ setMatches(updated);
           )}
         </div>
 
-        {/* Right: Connection Requests */}
-        <div className="hidden lg:block w-1/3 pr-8 pt-10">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-5">
-            <h2 className="text-xl font-semibold text-gray-800 mb-3 text-center">Connection Requests</h2>
-            <div className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              <ReceivedRequests />
-            </div>
-          </div>
+       <div className="w-full lg:w-1/3  border-l p-6">
+  <div className="bg-white rounded-3xl shadow-xl p-4">
+    <MyConnections />
+  </div>
+</div>
 
 
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-5">
-            <h2 className="text-xl font-semibold text-gray-800 mb-3 text-center">sent Requests</h2>
-            <div className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              <SentRequests/>
-            </div>
-          </div>
-        </div>
+        
       </div>
 
       {/* Footer */}
