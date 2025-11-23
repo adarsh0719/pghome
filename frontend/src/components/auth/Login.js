@@ -108,6 +108,10 @@ const Login = () => {
             </div>
           </form>
 
+          <Link to="/forgot-password" className="text-sm text-gray-200 hover:text-white">
+  Forgot password?
+</Link>
+
           {/* Demo Credentials */}
           <div className="mt-8">
             <div className="relative">

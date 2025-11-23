@@ -30,6 +30,10 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import OwnerBookings from './pages/Payment/OwnerBookings';
 import { SocketProvider } from './context/SocketContext'; 
 import NotificationsPage from './pages/notifypage/NotificationsPage';
+import ForgetPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
+
+import VerifyResetOtp from './components/auth/VerifyResetOtp';
 const queryClient = new QueryClient();
 
 // Protected Route Component
@@ -117,6 +121,23 @@ function App() {
               <Route path="/register" element={
                 <PublicRoute>
                   <Register />
+                </PublicRoute>
+              } />
+              <Route path="/forgot-password" element={
+                <PublicRoute>
+                  <ForgetPassword/>
+                </PublicRoute>
+              } />
+
+              <Route path="/verify-reset-otp" element={
+                <PublicRoute>
+                  <VerifyResetOtp/>
+                </PublicRoute>
+              } />
+
+              <Route path="/reset-password" element={
+                <PublicRoute>
+                  <ResetPassword/>
                 </PublicRoute>
               } />
               

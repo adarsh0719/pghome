@@ -122,6 +122,63 @@ router.get('/me', protect, async (req, res) => {
 });
 
 
+// 1. REQUEST OTP FOR PASSWORD RESET
+router.post("/request-password-reset", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "No user found with this email" });
+
+    // Use your existing sendOTP method
+    await sendOTP(req, res, true);  // pass a flag to differentiate from signup if needed
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// 2. VERIFY OTP
+router.post("/verify-reset-otp", async (req, res) => {
+  try {
+    const result = await verifyOTP(req, res, true); // send a flag to handle reset OTPs
+
+    if (result.success) {
+      return res.json({
+        success: true,
+        message: "OTP verified",
+      });
+    }
+
+    return res.status(400).json({ success: false, message: "Invalid OTP" });
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// 3. RESET PASSWORD
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    const user = await User.findOne({ email }).select("+password");
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    user.password = newPassword;
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Password reset successful!",
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 router.post("/send-otp", sendOTP);
 router.post("/verify-otp", verifyOTP);
 
