@@ -113,31 +113,69 @@ await User.findByIdAndUpdate(
     res.status(500).json({ message: 'Server error: ' + error.message });
   }
 };
-
 // @desc    Update a property
-
 exports.updateProperty = async (req, res) => {
   try {
-    let property = await Property.findById(req.params.id);
-
-    if (!property) {
-      return res.status(404).json({ message: 'Property not found' });
+    // ----- Existing images -----
+    let existingImages = [];
+    if (req.body.existingImages) {
+      try {
+        existingImages = JSON.parse(req.body.existingImages);
+      } catch (e) {
+        existingImages = [];
+      }
     }
 
-    // Check if the logged in user is the owner of the property
-    if (property.owner.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'User not authorized' });
+    // ----- New images -----
+    const newImages = req.files?.map(file => ({
+      url: file.path,
+      publicId: file.filename
+    })) || [];
+
+    const images = [...existingImages, ...newImages];
+
+    // ----- Amenities & Rules -----
+    const amenities = req.body.amenities ? JSON.parse(req.body.amenities) : [];
+    const rules = req.body.rules ? JSON.parse(req.body.rules) : [];
+
+    // ----- LOCATION (fixed) -----
+    const location = {
+      address:  req.body.location?.address  || req.body["location[address]"]  || "",
+      city:     req.body.location?.city     || req.body["location[city]"]     || "",
+      state:    req.body.location?.state    || req.body["location[state]"]    || "",
+      pincode:  req.body.location?.pincode  || req.body["location[pincode]"]  || "",
+      landmark: req.body.location?.landmark || req.body["location[landmark]"] || "",
+    };
+
+    // ----- Build update object -----
+    const updateData = {
+      title: req.body.title,
+      description: req.body.description,
+      type: req.body.type,
+      rent: Number(req.body.rent),
+      securityDeposit: Number(req.body.securityDeposit || 0),
+      videoUrl: req.body.videoUrl || "",
+      liveViewAvailable: req.body.liveViewAvailable === "true" || req.body.liveViewAvailable === true,
+      amenities,
+      rules,
+      images,
+      location,
+    };
+
+    const updated = await Property.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Property not found" });
     }
 
-    property = await Property.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    });
-
-    res.json(property);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Server error" });
   }
 };
 

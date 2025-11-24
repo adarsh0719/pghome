@@ -16,10 +16,12 @@ router.route('/')
   .get(getProperties)
   .post(protect, uploadMultiple, createProperty);
 
-router.route('/:id')
+router
+  .route("/:id")
   .get(getProperty)
-  .put(protect, updateProperty)
+  .put(protect, uploadMultiple, updateProperty)
   .delete(protect, deleteProperty);
+
 
 // Delete property images - FIX: Remove require inside route
 router.delete('/:id/images', protect, async (req, res) => {

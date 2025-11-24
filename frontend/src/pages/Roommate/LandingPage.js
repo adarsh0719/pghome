@@ -2,22 +2,24 @@
 import React from "react";
 import Navbar from "../../components/Layout/Navbar"; // Import your reusable navbar
 import "./LandingPage.css";
-
+import landing1 from "../../images/landing1.jpeg";
+import landing2 from "../../images/landing2.jpeg";
+import landing3 from "../../images/landing3.jpeg";
 const cards = [
   {
     name: "Danna",
     age: 28,
-    img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    img: landing1,
   },
   {
     name: "Josh",
     age: 34,
-    img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    img: landing2,
   },
   {
     name: "Tina",
     age: 30,
-    img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    img: landing3,
   },
 ];
 

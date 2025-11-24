@@ -34,6 +34,7 @@ import ForgetPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 
 import VerifyResetOtp from './components/auth/VerifyResetOtp';
+import EditProperty from './pages/Properties/EditProperty';
 const queryClient = new QueryClient();
 
 // Protected Route Component
@@ -151,6 +152,11 @@ function App() {
               <Route path="/add-property" element={
                 <OwnerRoute>
                   <AddProperty />
+                </OwnerRoute>
+              } />
+              <Route path="/edit-property/:id" element={
+                <OwnerRoute>
+                  <EditProperty/>
                 </OwnerRoute>
               } />
               <Route path="/kyc-verify" element={

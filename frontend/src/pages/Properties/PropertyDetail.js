@@ -306,13 +306,21 @@ const PropertyDetail = () => {
               </div>
             </div>
 {user && property?.owner?._id === user._id && (
-  <div className="flex justify-start mt-4">
+  <div className="flex justify-start mt-4 gap-3">
     <button
       onClick={handleDelete}
-      className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-semibold transition"
+      className="bg-red-600 hover:bg-red-700 text-white py-2 px-2 rounded-lg font-semibold transition"
     >
       Delete Property
     </button>
+
+
+    <Link to={`/edit-property/${property._id}`}>
+  <button className="bg-[#d16729] text-white px-4 py-2 rounded-md font-semibold">
+    Edit Property
+  </button>
+</Link>
+
     
   </div>
 )}

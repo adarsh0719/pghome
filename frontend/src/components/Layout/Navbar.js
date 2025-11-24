@@ -32,8 +32,16 @@ const [notificationCount, setNotificationCount] = useState(0);
   };
 
   useEffect(() => {
+  if (!user) return;
+
+  fetchNotificationCount(); // initial call
+
+  const interval = setInterval(() => {
     fetchNotificationCount();
-  }, [user]);
+  }, 5000); // refresh every 5 seconds
+
+  return () => clearInterval(interval);
+}, [user]);
 
   useEffect(() => {
     const fetchProfileImage = async () => {
@@ -117,7 +125,7 @@ const [notificationCount, setNotificationCount] = useState(0);
               <img
                 src={profileImage}
                 alt="Profile"
-                className="w-10 h-10 rounded-full object-cover border-2 border-blue-500 cursor-pointer hover:scale-105 transition"
+                className="w-10 h-10 rounded-full object-cover border-2 border-orange-500 cursor-pointer hover:scale-105 transition"
                 onClick={() => setShowProfile(!showProfile)}
               />
               <button

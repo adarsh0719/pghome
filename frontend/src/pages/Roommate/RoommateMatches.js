@@ -6,8 +6,6 @@ import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
 import Footer from '../homepage/Footer';
 import { useNavigate } from 'react-router-dom';
-import ReceivedRequests from './ReceivedRequests';
-import SentRequests from '../../components/notifications/SentRequests';
 import MyConnections from "./MyConnections";
 
 
@@ -44,6 +42,8 @@ const RoommateMatches = () => {
   const currentMatch = matches[currentIndex] || null;
   const currentImages = currentMatch?.profile?.images || [];
 const [myProfile, setMyProfile] = useState(null);
+const [connectedUserIds, setConnectedUserIds] = useState([]);
+const [mobileShowConnections, setMobileShowConnections] = useState(false);
 
   
 
@@ -75,6 +75,21 @@ useEffect(() => {
 }, [user]);
 
 
+const fetchConnectedUsers = useCallback(async () => {
+  try {
+    const { data } = await axios.get("/api/connections/connections", {
+      headers: { Authorization: `Bearer ${user.token}` }
+    });
+
+    const ids = data.map(conn => conn.otherUser?._id);
+    setConnectedUserIds(ids);
+  } catch (err) {
+    console.error("Failed to fetch connected users", err);
+  }
+}, [user]);
+
+
+
   // Fetch user profile
   const fetchProfile = useCallback(async () => {
     if (!user) return setProfileCreated(false);
@@ -90,38 +105,47 @@ useEffect(() => {
     }
   }, [user]);
 
+  
+useEffect(() => {
+  if (user) {
+    fetchConnectedUsers();
+    fetchProfile();
+  }
+}, [user, fetchProfile, fetchConnectedUsers]);
+
+
   //  Fetch matches
-  const fetchMatches = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const { data } = await axios.get('/api/roommate/matches', {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      console.log("MATCH RESPONSE:", data);
-     const updated = data.map((m) => {
-  const myLat = myProfile?.coordinates?.coordinates?.[1];   // logged-in user
-  const myLng = myProfile?.coordinates?.coordinates?.[0];
-  console.log(myLat);
-  console.log(myLng);
-console.log('gap');
-  const theirLat = m.profile?.coordinates?.coordinates?.[1];
-  const theirLng = m.profile?.coordinates?.coordinates?.[0];
- console.log(theirLat);
- console.log(theirLng);
-  const distance = getDistance(myLat, myLng, theirLat, theirLng);
+  // Fetch matches only when profile and connected users are ready
+const fetchMatches = useCallback(async () => {
+  if (!user || !myProfile || connectedUserIds.length === 0) return;
+  setLoading(true);
 
-  return { ...m, distance };
-});
-setMatches(updated);
+  try {
+    const { data } = await axios.get('/api/roommate/matches', {
+      headers: { Authorization: `Bearer ${user.token}` },
+    });
 
-    } catch (err) {
-      console.error(err);
-      toast.error(err?.response?.data?.message || 'Failed to fetch matches');
-    } finally {
-      setLoading(false);
-    }
-  }, [user, myProfile]);
+    // Filter and add distance immediately
+    const filtered = data
+      .map((m) => {
+        const myLat = myProfile?.coordinates?.coordinates?.[1];
+        const myLng = myProfile?.coordinates?.coordinates?.[0];
+        const theirLat = m.profile?.coordinates?.coordinates?.[1];
+        const theirLng = m.profile?.coordinates?.coordinates?.[0];
+        const distance = getDistance(myLat, myLng, theirLat, theirLng);
+        return { ...m, distance };
+      })
+      .filter((m) => !connectedUserIds.includes(m.profile?.user?._id));
+
+    setMatches(filtered);
+  } catch (err) {
+    console.error(err);
+    toast.error(err?.response?.data?.message || 'Failed to fetch matches');
+  } finally {
+    setLoading(false);
+  }
+}, [user, myProfile, connectedUserIds]);
+
 
   useEffect(() => { if (user) fetchProfile(); }, [user, fetchProfile]);
  useEffect(() => {
@@ -184,8 +208,141 @@ setMatches(updated);
   return (
     <div className="min-h-screen  flex flex-col">
       <div className="flex flex-col lg:flex-row w-full flex-grow pt-24">
+        {mobileShowConnections ? (
+    <div className="lg:hidden w-full p-4">
+      <div className="bg-white rounded-3xl shadow-xl p-4">
+        <MyConnections />
+      </div>
+    </div>
+  ) : (
+    <div className="lg:hidden flex-1 flex flex-col items-center justify-center px-6 pb-10">
+      <div className="w-full max-w-sm mx-auto flex flex-col items-center justify-center">
+  <div className="text-center mt-4 mb-6">
+    <h1 className="text-3xl font-bold text-amber-700 mb-2">Find Your Roommate</h1>
+    <p className="text-gray-700">Swipe right to like, left to pass</p>
+  </div>
+
+  <div className="relative w-full h-[70vh] flex items-center justify-center">
+    {loading ? (
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Finding perfect roommates...</p>
+      </div>
+    ) : matches.length > 0 ? (
+      <AnimatePresence mode="wait">
+        {currentMatch && (
+          <motion.div
+            key={currentMatch.profile._id}
+            className="absolute w-full h-full bg-white rounded-3xl shadow-2xl overflow-hidden cursor-pointer flex flex-col"
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.7}
+            onDragEnd={handleDragEnd}
+            onClick={handleCardClick}
+            initial={{ scale: 0.9, y: 20, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{
+              x: exitX,
+              rotate: direction * 25,
+              opacity: 0,
+              scale: 0.85,
+              transition: { duration: 0.4 }
+            }}
+            transition={{ type: "spring", stiffness: 350, damping: 25 }}
+          >
+            <div className="w-full h-3/5 relative">
+              {currentImages.length > 0 ? (
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={currentImages[imageIndex]}
+                    src={currentImages[imageIndex]}
+                    alt="Roommate"
+                    className="w-full h-full object-cover absolute inset-0"
+                    initial={{ opacity: 0, scale: 1.1 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.4 }}
+                  />
+                </AnimatePresence>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  No photos available
+                </div>
+              )}
+
+              <div className="absolute top-4 left-4 bg-white/90 px-4 py-2 rounded-full shadow-lg">
+                <span className="font-bold text-amber-600 text-sm">
+                  {currentMatch.compatibilityScore}% Match
+                </span>
+              </div>
+
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
+                <h2 className="text-2xl font-bold text-white mb-1">
+                  {currentMatch.profile.user?.name}{formatAgeAndGender(currentMatch.profile)}
+                </h2>
+                <div className="flex items-center space-x-4 text-white/90 text-sm">
+                  <span>
+                    {currentMatch.distance !== null ? `${currentMatch.distance} km away` : "Distance unavailable"}
+                  </span>
+                  <span>₹{currentMatch.profile.budget || 'N/A'}/month</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 flex-grow flex flex-col justify-center">
+              <p className="text-base text-gray-700 leading-relaxed text-center">
+                {currentMatch.profile.bio || 'No bio provided'}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    ) : (
+      <div className="text-center text-gray-600 bg-white rounded-3xl p-10 shadow-xl">
+        <div className="text-6xl mb-4">🏠</div>
+        <h3 className="text-xl font-semibold mb-2">No matches found</h3>
+        <p className="mb-6 text-gray-500">We couldn’t find any roommates that match your preferences.</p>
+        <button
+          onClick={() => setProfileCreated(false)}
+          className="bg-amber-500 text-white px-6 py-3 rounded-2xl font-bold text-lg hover:bg-amber-600 shadow-lg"
+        >
+          Update Preferences
+        </button>
+      </div>
+    )}
+  </div>
+
+  {matches.length > 0 && (
+    <div className="w-full max-w-sm flex justify-around items-center mt-6">
+      <button
+        className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center"
+        onClick={() => handleSwipe('left')}
+        disabled={loading || !currentMatch}
+      >
+        <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <button
+        className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center"
+        onClick={() => handleLike(currentMatch?.profile?.user?._id)}
+        disabled={loading || !currentMatch}
+      >
+        <svg className="w-10 h-10 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                clipRule="evenodd" />
+        </svg>
+      </button>
+    </div>
+  )}
+</div>
+
+    </div>
+  )}
         {/* Left: Match Section */}
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
+        <div className="hidden lg:flex flex-1 flex-col items-center justify-center px-6">
           <div className="text-center mt-4 mb-8">
             <h1 className="text-4xl font-bold text-amber-700 mb-2">Find Your Roommate</h1>
             <p className="text-gray-700 text-lg">Swipe right to like, left to pass</p>
@@ -306,7 +463,7 @@ setMatches(updated);
           )}
         </div>
 
-       <div className="w-full lg:w-1/3  border-l p-6">
+       <div className="hidden lg:block w-1/3 border-l p-6">
   <div className="bg-white rounded-3xl shadow-xl p-4">
     <MyConnections />
   </div>
@@ -315,6 +472,15 @@ setMatches(updated);
 
         
       </div>
+      {/* MOBILE ONLY SWITCH BUTTON */}
+<div className="lg:hidden fixed bottom-6 right-6 z-50">
+  <button
+    onClick={() => setMobileShowConnections(!mobileShowConnections)}
+    className="bg-amber-600 text-white px-5 py-3 rounded-full shadow-xl font-semibold"
+  >
+    {mobileShowConnections ? "Back to Matches" : "My Connections"}
+  </button>
+</div>
 
       {/* Footer */}
       <Footer />

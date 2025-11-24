@@ -4,12 +4,14 @@ import { useAuth } from "../../context/AuthContext";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { MessageCircle } from "lucide-react"; 
-
+import ChatWindow from "../../components/chat/ChatWindow";
 const MyConnections = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [connections, setConnections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [chatId, setChatId] = useState(null);
+  const [activeReceiver, setActiveReceiver] = useState(null);
 
   const fetchConnections = async () => {
     try {
@@ -46,50 +48,95 @@ const MyConnections = () => {
     );
   }
 
-  return (
-    <div className="px-4 py-6 max-w-xl mx-auto">
-      <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-amber-700 text-center sm:text-left">
-        My Connections
-      </h2>
+  const startChatFromConnection = async (otherUser) => {
+  try {
+    const { data } = await axios.post(
+      "/api/chat/create",
+      { otherUserId: otherUser._id },
+      { headers: { Authorization: `Bearer ${user.token}` } }
+    );
 
-      <div className="flex flex-col gap-3 sm:gap-4">
-        {connections.map((conn) => {
-          const person = conn.otherUser;
+    setChatId(data._id);
+    setActiveReceiver(otherUser);
+  } catch (err) {
+    console.error("Chat create error:", err.response?.data || err.message);
+  }
+};
 
-          return (
-            <motion.div
-              key={conn._id}
-              whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-3 sm:gap-4 p-3 rounded-2xl shadow-md bg-white hover:shadow-lg transition cursor-pointer w-full"
-              onClick={() => navigate(`/profile/${person._id}`)}
+
+ return (
+  <div className="px-4 py-6 max-w-xl mx-auto">
+    <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-amber-700 text-center sm:text-left">
+      My Connections
+    </h2>
+
+    <div className="max-h-[70vh] overflow-y-auto pr-2 flex flex-col gap-3 sm:gap-4">
+
+      {connections.map((conn) => {
+        const person = conn.otherUser;
+
+        return (
+          <motion.div
+            key={conn._id}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-3 sm:gap-4 p-3 rounded-2xl shadow-md bg-white hover:shadow-lg transition cursor-pointer w-full"
+            onClick={() => navigate(`/profile/${person._id}`)}
+          >
+            <img
+              src={person?.profileImage || "/default.jpg"}
+              alt="profile"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border border-gray-200"
+            />
+
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm sm:text-base font-semibold text-gray-800 truncate">
+                {person.name}
+              </h3>
+              <p className="text-gray-500 text-xs sm:text-sm truncate max-w-full">
+                {person.bio || "Hey there! I am using PGHome 🤝"}
+              </p>
+            </div>
+
+            <button
+              className="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-700 flex-shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                startChatFromConnection(person);
+              }}
             >
-              {/* Profile Image */}
-              <img
-                src={person?.profileImage || "/default.jpg"}
-                alt="profile"
-                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border border-gray-200"
-              />
+              <MessageCircle size={18} />
+            </button>
 
-              {/* Text */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm sm:text-base font-semibold text-gray-800 truncate">
-                  {person.name}
-                </h3>
-                <p className="text-gray-500 text-xs sm:text-sm truncate max-w-full">
-                  {person.bio || "Hey there! I am using PGHome 🤝"}
-                </p>
-              </div>
+          </motion.div>
+        );
+      })}
 
-              {/* Message Button */}
-              <button className="p-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-700 flex-shrink-0">
-                <MessageCircle size={18} />
-              </button>
-            </motion.div>
-          );
-        })}
-      </div>
     </div>
-  );
+
+    {/* ✅ ChatWindow should be OUTSIDE map, rendered only once */}
+    {chatId && activeReceiver && (
+  <div className="
+    fixed bottom-3 right-3 
+    w-[90%] max-w-[380px]       /* mobile size */
+    sm:w-[420px] sm:bottom-6 sm:right-6   /* larger size on tablets+ */
+    z-[9999]
+  ">
+    <ChatWindow
+      chatId={chatId}
+      receiver={activeReceiver}
+      onClose={() => {
+        setChatId(null);
+        setActiveReceiver(null);
+      }}
+    />
+  </div>
+)}
+
+
+  </div>
+);
+
+
 };
 
 export default MyConnections;

@@ -214,26 +214,36 @@ router.get('/profile/:id', async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-router.put("/profile", authMiddleware, upload.single("image"), async (req, res) => {
+router.put("/profile", authMiddleware, upload.array("images", 3), async (req, res) => {
   try {
     const userId = req.user.id;
     const existing = await RoommateProfile.findOne({ user: userId }).populate("user");
 
     if (!existing) return res.status(404).json({ message: "Profile not found" });
 
-    //  Update user name if provided
+    // Update user name
     if (req.body.name) {
       const user = await User.findById(userId);
       user.name = req.body.name;
       await user.save();
-      existing.user = user; // reattach updated user
+      existing.user = user;
     }
 
-    //  Handle image (as before)
-    if (req.file) {
-      const imageUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
-      existing.images = [imageUrl];
-    }
+    // Append new images
+   // Append new images and remove marked ones
+if (req.files && req.files.length > 0) {
+  const newImages = req.files.map(
+    (file) => `data:${file.mimetype};base64,${file.buffer.toString("base64")}`
+  );
+  existing.images = [...(existing.images || []), ...newImages];
+}
+
+// Remove images by indices if provided
+if (req.body.removedIndices) {
+  const indices = JSON.parse(req.body.removedIndices);
+  existing.images = existing.images.filter((_, idx) => !indices.includes(idx));
+}
+
 
     existing.age = req.body.age || existing.age;
     existing.gender = req.body.gender || existing.gender;
@@ -241,16 +251,12 @@ router.put("/profile", authMiddleware, upload.single("image"), async (req, res) 
     existing.bio = req.body.bio || existing.bio;
     if (req.body.location) existing.location = req.body.location;
 
-if (req.body.latitude && req.body.longitude) {
-  existing.coordinates = {
-    type: "Point",
-    coordinates: [
-      parseFloat(req.body.longitude),
-      parseFloat(req.body.latitude)
-    ]
-  };
-}
-
+    if (req.body.latitude && req.body.longitude) {
+      existing.coordinates = {
+        type: "Point",
+        coordinates: [parseFloat(req.body.longitude), parseFloat(req.body.latitude)],
+      };
+    }
 
     await existing.save();
     res.json(await existing.populate("user"));
@@ -259,6 +265,7 @@ if (req.body.latitude && req.body.longitude) {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 
 //------------------------------------------------------
