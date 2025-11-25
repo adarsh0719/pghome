@@ -39,6 +39,12 @@ const RoommateProfileSchema = new mongoose.Schema({
       default: [0, 0]
     }
   },
+  stayingInPG: { type: Boolean, default: false },
+  currentPG: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Property',
+    default: null
+  },
 
   createdAt: { type: Date, default: Date.now }
 });

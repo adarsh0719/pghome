@@ -5,7 +5,7 @@ const multer = require('multer');
 const RoommateProfile = require('../models/RoommateProfile');
 const authMiddleware = require('../middleware/auth');
 const User = require('../models/User');
-
+const Property = require('../models/Property');
 require('dotenv').config();
 
 // Multer memory storage (we'll either upload to Cloudinary or convert to base64)
@@ -32,7 +32,8 @@ router.post('/profile', authMiddleware, upload.array('images', 3), async (req, r
     // body.habits expected as JSON string from frontend
     const {
   age, gender, budget, durationOfStay, bio, vibeScore,
-  location, latitude, longitude
+  location, latitude, longitude,stayingInPG,
+  currentPGId,
 } = req.body;
 
 
@@ -91,7 +92,9 @@ router.post('/profile', authMiddleware, upload.array('images', 3), async (req, r
     sleepSchedule: habits.sleepSchedule || 'flexible'
   },
   vibeScore: Number(vibeScore || 5),
-  images: imageUrls
+  images: imageUrls,
+  stayingInPG: stayingInPG === 'true' || stayingInPG === true,
+  currentPG: (stayingInPG === 'true' && currentPGId) ? currentPGId : null,
 };
 
 
@@ -191,22 +194,32 @@ router.get('/matches', authMiddleware, async (req, res) => {
 // Node.js / Express example
 const Booking = require('../models/Booking');
 
+// routes/roommate.js → GET /profile/:id
+
 router.get('/profile/:id', async (req, res) => {
   try {
     const profileDoc = await RoommateProfile.findOne({ user: req.params.id })
-      .populate('user', 'name email _id');
+      .populate('user', 'name email _id')
+      .populate('currentPG'); // populate selected PG
 
     if (!profileDoc) return res.status(404).json({ message: "Profile not found" });
 
-    // Find current property from booking
     const currentBooking = await Booking.findOne({
       bookedBy: req.params.id,
       status: 'paid'
     }).populate('property');
 
-    // Convert mongoose document to plain object
     const profile = profileDoc.toObject();
-    profile.currentProperty = currentBooking?.property || null;
+
+    // PRIORITY LOGIC
+    if (currentBooking?.property) {
+      profile.currentProperty = currentBooking.property; // Booked PG wins
+    } else if (profile.currentPG) {
+      profile.currentProperty = profile.currentPG;       // Selected in profile
+      delete profile.currentPG; // optional: clean up
+    } else {
+      profile.currentProperty = null;
+    }
 
     res.json(profile);
   } catch (err) {
@@ -267,6 +280,65 @@ if (req.body.removedIndices) {
 });
 
 
+// routes/roommate.js  (add this route)
+router.get('/pg-list', authMiddleware, async (req, res) => {
+  try {
+    const { search } = req.query;
+    const searchTerm = search?.trim();
+
+    // Build a flexible query that works no matter how your properties are saved
+    let query = {
+      $or: [
+        { type: { $regex: /pg|hostel|paying/i } }, // matches PG, pg, Hostel, Paying Guest
+        { title: { $regex: /pg|hostel|paying guest/i } },
+        { "location.city": { $regex: /bangalore|pune|hyderabad|delhi|mumbai/i } } // optional: common cities
+      ]
+    };
+
+    // If user typed something, make search super smart
+    if (searchTerm) {
+      query = {
+        $or: [
+          { title: { $regex: searchTerm, $options: 'i' } },
+          { 'location.city': { $regex: searchTerm, $options: 'i' } },
+          { 'location.landmark': { $regex: searchTerm, $options: 'i' } },
+          { 'location.address': { $regex: searchTerm, $options: 'i' } },
+          { description: { $regex: searchTerm, $options: 'i' } }
+        ]
+      };
+    }
+
+    const pgs = await Property.find(query)
+      .select('title location rent images type')
+      .limit(15)
+      .lean(); // important for performance
+
+    // Normalize image URL to always work
+    const normalized = pgs.map(pg => {
+      let imageUrl = null;
+
+      if (pg.images && pg.images.length > 0) {
+        if (typeof pg.images[0] === 'string') {
+          imageUrl = pg.images[0];
+        } else if (pg.images[0]?.url) {
+          imageUrl = pg.images[0].url;
+        } else if (pg.images[0]?.path) {
+          imageUrl = pg.images[0].path;
+        }
+      }
+
+      return {
+        ...pg,
+        imageUrl // ← frontend will read this safely
+      };
+    });
+
+    res.json(normalized);
+  } catch (err) {
+    console.error('PG List Error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
 
 //------------------------------------------------------
 // AUTO-UPDATE LOCATION when user opens Roommate Finder

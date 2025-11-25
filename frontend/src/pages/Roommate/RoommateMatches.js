@@ -117,7 +117,7 @@ useEffect(() => {
   //  Fetch matches
   // Fetch matches only when profile and connected users are ready
 const fetchMatches = useCallback(async () => {
-  if (!user || !myProfile || connectedUserIds.length === 0) return;
+  if (!user || !myProfile) return;
   setLoading(true);
 
   try {

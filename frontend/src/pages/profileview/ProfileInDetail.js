@@ -161,7 +161,7 @@ useEffect(() => {
                   <motion.h1
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="text-2xl sm:text-4xl font-bold text-gray-900"
+                    className="text-2xl sm:text-4xl font-bold text-white"
                   >
                     {profile.user?.name}
                   </motion.h1>
@@ -249,21 +249,23 @@ useEffect(() => {
                       
                     </div>
              {profile.currentProperty ? (
-  <div className="mt-4 flex flex-col gap-2">
-    <div>
-      <span className="font-semibold text-gray-700">Currently Staying At: </span>
-      <span className="text-gray-800">{profile.currentProperty.title}</span>
+  <div className="mt-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-amber-700 font-medium">Currently Staying At</p>
+        <p className="text-xl font-bold text-amber-900">{profile.currentProperty.title}</p>
+        <p className="text-gray-700">{profile.currentProperty.location.city}</p>
+      </div>
+      <button
+        onClick={() => navigate(`/properties/${profile.currentProperty._id}`)}
+        className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg"
+      >
+        View PG
+      </button>
     </div>
-
-    <button
-      onClick={() => navigate(`/properties/${profile.currentProperty._id}`)}
-      className="bg-[#d16729] hover:bg-[#b95520] text-white px-6 py-2 rounded-lg text-base font-semibold transition duration-200 shadow-md w-fit"
-    >
-      Go to Property
-    </button>
   </div>
 ) : (
-  <div className="mt-4 text-gray-500">Not staying at any PG currently</div>
+  <p className="text-gray-500 italic">Not staying in any PG currently</p>
 )}
 
 

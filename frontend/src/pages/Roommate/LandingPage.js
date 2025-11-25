@@ -5,21 +5,23 @@ import "./LandingPage.css";
 import landing1 from "../../images/landing1.jpeg";
 import landing2 from "../../images/landing2.jpeg";
 import landing3 from "../../images/landing3.jpeg";
+import landing4 from "../../images/landing4.jpeg";
 const cards = [
   {
-    name: "Danna",
-    age: 28,
-    img: landing1,
+    name: "Sakshi",
+    img: landing1
   },
   {
-    name: "Josh",
-    age: 34,
+    name: "Jahnvi",
     img: landing2,
   },
   {
-    name: "Tina",
-    age: 30,
+    name: "Anjali",
     img: landing3,
+  },
+  {
+    name: "Aditi",
+    img: landing4,
   },
 ];
 
@@ -42,7 +44,7 @@ const LandingPage = () => {
             >
               <img src={card.img} alt={card.name} />
               <div className="landing-overlay">
-                {card.name}, {card.age}
+                {card.name}
               </div>
             </div>
           ))}
