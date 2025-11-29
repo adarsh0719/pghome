@@ -167,6 +167,7 @@ const [notificationCount, setNotificationCount] = useState(0);
           <Link to="/roommateMatches" className="mobile-link" onClick={() => setMenuOpen(false)}>
             Roommate Finder
           </Link>
+          <Link to="/posts" className="mobile-link" onClick={() => setMenuOpen(false)}>Posts</Link>
            <Link
   to="/notifications"
   className="mobile-link relative flex justify-center items-center text-3xl py-3"
