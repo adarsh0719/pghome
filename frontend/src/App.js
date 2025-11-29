@@ -35,6 +35,8 @@ import ResetPassword from './components/auth/ResetPassword';
 
 import VerifyResetOtp from './components/auth/VerifyResetOtp';
 import EditProperty from './pages/Properties/EditProperty';
+import PostsFeed from './pages/posts/PostsFeed';
+import CreatePost from './pages/posts/CreatePost';
 const queryClient = new QueryClient();
 
 // Protected Route Component
@@ -216,6 +218,17 @@ function App() {
                 <ProtectedRoute>
                   <NotificationsPage />
                 </ProtectedRoute>
+              } />
+              <Route path="/posts" element={
+                <ProtectedRoute>
+                <PostsFeed />
+               </ProtectedRoute>
+              } />
+
+             <Route path="/create-post" element={
+               <ProtectedRoute>
+                <CreatePost />
+              </ProtectedRoute>
               } />
               
               

@@ -1,18 +1,33 @@
+// middleware/upload.js
 const multer = require('multer');
-const { storage, fileFilter } = require('../config/cloudinary');
+const {
+  storage,
+  fileFilter,
+  postStorage,
+  postFileFilter
+} = require('../config/cloudinary');
 
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  }
+// Property uploads (existing)
+const propertyMulter = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-// Middleware for multiple images
-const uploadMultiple = upload.array('images', 10); // Max 10 images
+const uploadMultiple = propertyMulter.array('images', 10);
+const uploadSingle = propertyMulter.single('image');
 
-// Middleware for single image
-const uploadSingle = upload.single('image');
+// Posts uploads (images + videos)
+const postMulter = multer({
+  storage: postStorage,
+  fileFilter: postFileFilter,
+  limits: { fileSize: 100 * 1024 * 1024 } // 100MB for videos
+});
 
-module.exports = { uploadMultiple, uploadSingle };
+const uploadPostMedia = postMulter.array('media', 10);
+
+module.exports = {
+  uploadMultiple,
+  uploadSingle,
+  uploadPostMedia  // ← This is the correct one for posts
+};

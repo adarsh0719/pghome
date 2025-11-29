@@ -4,67 +4,68 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ChatWindow from '../../components/chat/ChatWindow';
 import { useNavigate } from "react-router-dom";
 
 const ProfileInDetail = () => {
   const { id } = useParams();
-  const { user} = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('none');
   const [chatId, setChatId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
-useEffect(() => {
-  const fetchProfile = async () => {
-    try {
-      const { data } = await axios.get(`/api/roommate/profile/${id}`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      console.log(" Profile data fetched:", data);
-      setProfile(data);
 
-      // Fetch connection status separately
+  useEffect(() => {
+    const fetchProfile = async () => {
       try {
-        const statusRes = await axios.get(`/api/connections/status/${data.user._id}`, {
+        const { data } = await axios.get(`/api/roommate/profile/${id}`, {
           headers: { Authorization: `Bearer ${user.token}` },
         });
-        setConnectionStatus(statusRes.data.status);
+        console.log(" Profile data fetched:", data);
+        setProfile(data);
+
+        // Fetch connection status separately
+        try {
+          const statusRes = await axios.get(`/api/connections/status/${data.user._id}`, {
+            headers: { Authorization: `Bearer ${user.token}` },
+          });
+          setConnectionStatus(statusRes.data.status);
+        } catch (err) {
+          console.warn(' Could not fetch connection status:', err.response?.data || err.message);
+          setConnectionStatus('none'); // default fallback
+        }
+
       } catch (err) {
-        console.warn(' Could not fetch connection status:', err.response?.data || err.message);
-        setConnectionStatus('none'); // default fallback
+        console.error(' Error fetching profile:', err.response?.data || err.message);
+        toast.error('Failed to load profile');
       }
+    };
 
-    } catch (err) {
-      console.error(' Error fetching profile:', err.response?.data || err.message);
-      toast.error('Failed to load profile');
-    }
-  };
-
-  fetchProfile();
-}, [id, user]);
-
+    fetchProfile();
+  }, [id, user]);
 
   const handleSendRequest = async () => {
-  // Safety check: make sure profile and user._id exist
-  if (!profile?.user?._id) {
-    return toast.error('Profile not loaded properly');
-  }
+    if (!profile?.user?._id) {
+      return toast.error('Profile not loaded properly');
+    }
 
-  try {
-    await axios.post(
-  '/api/connections/send',
-  { receiverId: profile.user._id },
-  { headers: { Authorization: `Bearer ${user.token}` } }
-);
-    toast.success('Connection request sent!');
-    setConnectionStatus('pending');
-  } catch (err) {
-    console.error('Send request error:', err.response?.data || err.message);
-    toast.error(err.response?.data?.message || 'Unable to send request');
-  }
-};
+    try {
+      await axios.post(
+        '/api/connections/send',
+        { receiverId: profile.user._id },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      toast.success('Connection request sent!');
+      setConnectionStatus('pending');
+    } catch (err) {
+      console.error('Send request error:', err.response?.data || err.message);
+      toast.error(err.response?.data?.message || 'Unable to send request');
+    }
+  };
 
   const handleStartChat = async () => {
     try {
@@ -79,6 +80,52 @@ useEffect(() => {
     }
   };
 
+  const openImageModal = (image, index) => {
+    setSelectedImage({ image, index });
+    setIsModalOpen(true);
+  };
+
+  const closeImageModal = () => {
+    setIsModalOpen(false);
+    setSelectedImage(null);
+  };
+
+  const navigateImages = (direction) => {
+    if (!selectedImage || !profile.images) return;
+
+    const currentIndex = selectedImage.index;
+    let newIndex;
+
+    if (direction === 'next') {
+      newIndex = (currentIndex + 1) % profile.images.length;
+    } else {
+      newIndex = (currentIndex - 1 + profile.images.length) % profile.images.length;
+    }
+
+    setSelectedImage({
+      image: profile.images[newIndex],
+      index: newIndex
+    });
+  };
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isModalOpen) return;
+
+      if (e.key === 'Escape') {
+        closeImageModal();
+      } else if (e.key === 'ArrowRight') {
+        navigateImages('next');
+      } else if (e.key === 'ArrowLeft') {
+        navigateImages('prev');
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isModalOpen, selectedImage]);
+
   if (!profile) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -90,7 +137,7 @@ useEffect(() => {
     );
   }
 
-  return (
+ return (
     <div className="min-h-screen bg-gray-50 pt-28 sm:pt-32 px-3 sm:px-4">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -128,61 +175,58 @@ useEffect(() => {
                   Request Pending
                 </div>
               )}
-             {(connectionStatus === 'connected' || connectionStatus === 'accepted') && (
-  <motion.button
-      whileHover={{ scale: 1.05, y: -2 }}
-      whileTap={{ scale: 0.95 }}
-      onClick={handleStartChat}
-      className="bg-green-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-base font-semibold shadow-md hover:shadow-lg transition-all duration-300"
-  >
-      Start Chat
-  </motion.button>
-)}
-
+              {(connectionStatus === 'connected' || connectionStatus === 'accepted') && (
+                <motion.button
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleStartChat}
+                  className="bg-green-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg text-sm sm:text-base font-semibold shadow-md hover:shadow-lg transition-all duration-300"
+                >
+                  Start Chat
+                </motion.button>
+              )}
             </div>
           </div>
 
           {/* Profile Content */}
           <div className="relative px-4 sm:px-8 pb-8">
-            {/* Profile Picture and Basic Info */}
-            <div className="flex flex-col md:flex-row items-center md:items-end justify-between -mt-16 sm:-mt-20 mb-6">
-              <div className="flex flex-col md:flex-row items-center md:items-end space-y-3 sm:space-y-0 md:space-x-6">
-                <motion.div whileHover={{ scale: 1.02 }} className="relative">
-                  <div className="w-28 h-28 sm:w-40 sm:h-40 rounded-2xl border-4 border-white shadow-xl overflow-hidden bg-gray-100">
-                    <img
-                      src={profile.images?.[0] || '/placeholder.jpg'}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </motion.div>
-
-                <div className="text-center md:text-left mb-4">
-                  <motion.h1
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="text-2xl sm:text-4xl font-bold text-white"
-                  >
-                    {profile.user?.name}
-                  </motion.h1>
-                  <p className="text-lg sm:text-xl text-gray-600 mt-1 sm:mt-2 font-medium">
-                    {profile.occupation || 'Looking for roommate'}
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center md:justify-start mt-3 gap-2">
-                    <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium text-xs sm:text-sm">
-                      {profile.location || 'Location not set'}
-                    </span>
-                    <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full font-medium text-xs sm:text-sm">
-                      ₹{profile.budget || '0'}/month
-                    </span>
-                  </div>
+            {/* Profile Picture (centered, no text on image) */}
+            <div className="flex justify-center -mt-20 sm:-mt-24 mb-6">
+              <motion.div whileHover={{ scale: 1.02 }} className="relative">
+                <div className="w-32 h-32 sm:w-44 sm:h-44 rounded-3xl border-8 border-white shadow-2xl overflow-hidden bg-gray-100">
+                  <img
+                    src={profile.images?.[0] || '/placeholder.jpg'}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
+              </motion.div>
+            </div>
+
+            {/* Name & Info BELOW the image */}
+            <div className="text-center px-4">
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900"
+              >
+                {profile.user?.name}
+              </motion.h1>
+              <p className="text-lg sm:text-xl text-gray-600 mt-2 font-medium">
+                {profile.occupation || 'Looking for roommate'}
+              </p>
+              <div className="flex flex-wrap items-center justify-center mt-4 gap-3">
+               
+                <span className="bg-green-50 text-green-700 px-4 py-2 rounded-full font-medium text-sm sm:text-base">
+                  ₹{profile.budget || '0'}/month
+                </span>
               </div>
             </div>
 
             {/* Navigation Tabs */}
-            <div className="border-b border-gray-200 mb-6 sm:mb-8 overflow-x-auto">
-              <nav className="flex space-x-4 sm:space-x-8 text-sm sm:text-base">
+            <div className="border-b border-gray-200 mt-10 mb-6 sm:mb-8 overflow-x-auto">
+              <nav className="flex justify-center space-x-4 sm:space-x-8 text-sm sm:text-base">
                 {['overview', 'lifestyle', 'preferences', 'gallery'].map((tab) => (
                   <button
                     key={tab}
@@ -246,31 +290,26 @@ useEffect(() => {
                       <div className="text-blue-700 font-medium text-sm sm:text-base">
                         Monthly Budget
                       </div>
-                      
                     </div>
-             {profile.currentProperty ? (
-  <div className="mt-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm text-amber-700 font-medium">Currently Staying At</p>
-        <p className="text-xl font-bold text-amber-900">{profile.currentProperty.title}</p>
-        <p className="text-gray-700">{profile.currentProperty.location.city}</p>
-      </div>
-      <button
-        onClick={() => navigate(`/properties/${profile.currentProperty._id}`)}
-        className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg"
-      >
-        View PG
-      </button>
-    </div>
-  </div>
-) : (
-  <p className="text-gray-500 italic">Not staying in any PG currently</p>
-)}
-
-
-
-
+                    {profile.currentProperty ? (
+                      <div className="mt-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-amber-700 font-medium">Currently Staying At</p>
+                            <p className="text-xl font-bold text-amber-900">{profile.currentProperty.title}</p>
+                            <p className="text-gray-700">{profile.currentProperty.location.city}</p>
+                          </div>
+                          <button
+                            onClick={() => navigate(`/properties/${profile.currentProperty._id}`)}
+                            className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg"
+                          >
+                            View PG
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 italic">Not staying in any PG currently</p>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -370,12 +409,14 @@ useEffect(() => {
                     <motion.div
                       key={index}
                       whileHover={{ scale: 1.02 }}
-                      className="aspect-square rounded-lg overflow-hidden border border-gray-200 hover:shadow-md transition-all duration-300"
+                      className="aspect-square rounded-lg overflow-hidden border border-gray-200 hover:shadow-md transition-all duration-300 cursor-pointer bg-gray-100"
+                      onClick={() => openImageModal(image, index)}
                     >
                       <img
                         src={image}
                         alt={`Roommate photo ${index + 1}`}
                         className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
                       />
                     </motion.div>
                   ))}
@@ -408,6 +449,70 @@ useEffect(() => {
           </p>
         </motion.div>
       </motion.div>
+
+      {/* Image Preview Modal */}
+      <AnimatePresence>
+        {isModalOpen && selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+            onClick={closeImageModal}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", damping: 25 }}
+              className="relative w-full max-w-2xl h-[70vh] flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={closeImageModal}
+                className="absolute -top-0 right-0 text-white hover:text-gray-300 transition-colors z-50 bg-black bg-opacity-50 rounded-full p-3"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              {profile.images.length > 1 && (
+                <>
+                  <button
+                    onClick={() => navigateImages('prev')}
+                    className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-2 sm:p-3 rounded-full transition-all duration-200 z-10"
+                  >
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => navigateImages('next')}
+                    className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-2 sm:p-3 rounded-full transition-all duration-200 z-10"
+                  >
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </>
+              )}
+
+              <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm z-10">
+                {selectedImage.index + 1} / {profile.images.length}
+              </div>
+
+              <div className="w-[90%] h-[70%] sm:w-[85%] sm:h-[70%] md:w-[75%] md:h-[70%] flex items-center justify-center rounded overflow-hidden">
+                <img
+                  src={selectedImage.image}
+                  alt={`Roommate photo ${selectedImage.index + 1}`}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Chat Window */}
       {chatId && (

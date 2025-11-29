@@ -146,50 +146,69 @@ router.get('/profile', authMiddleware, async (req, res) => {
 });
 
 // Get matches
+// GET /matches?page=1&limit=10
 router.get('/matches', authMiddleware, async (req, res) => {
   try {
     const myProfile = await RoommateProfile.findOne({ user: req.user._id });
     if (!myProfile) return res.status(400).json({ message: 'Create your profile first' });
 
-    const allProfiles = await RoommateProfile.find({ user: { $ne: req.user._id } }).populate('user', 'name email');
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const skip = (page - 1) * limit;
+
+    // Fetch only the needed profiles
+    const allProfiles = await RoommateProfile.find({ user: { $ne: req.user._id } })
+      .populate('user', 'name email')
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
     const scoredProfiles = allProfiles
-      .filter(p => p.user) // remove profiles without user
-      .map((p) => {
-        let score = 0;
+  .filter(p => p.user)
+  .map((p) => {
+    let score = 0;
 
-        // Age: prefer similar ages — clamp difference into 0..10
-        score += Math.max(0, 10 - Math.abs(myProfile.age - p.age));
+    // Age & Budget
+    score += Math.max(0, 20 - Math.abs(myProfile.age - p.age));
+    score += Math.max(0, 10 - Math.abs(myProfile.budget - p.budget) / 1000);
 
-        // Budget: normalize by 1000 to avoid huge differences
-        score += Math.max(0, 10 - Math.abs(myProfile.budget - p.budget) / 1000);
+    // Habits
+    ['smoking','drinking','pets','parties','guests'].forEach(f => {
+      if (myProfile.habits?.[f] === p.habits?.[f]) score += 5;
+    });
 
-        // Matching boolean habits
-        ['smoking', 'drinking', 'pets', 'parties', 'guests'].forEach((f) => {
-          if (myProfile.habits?.[f] === p.habits?.[f]) score += 3;
-        });
+    // Sleep schedule
+    if ((myProfile.habits?.sleepSchedule || '') === (p.habits?.sleepSchedule || '')) score += 5;
 
-        // Sleep schedule exact match
-        if ((myProfile.habits?.sleepSchedule || '') === (p.habits?.sleepSchedule || '')) score += 5;
+    // Cleanliness
+    score += Math.max(0, 5 - Math.abs((myProfile.habits?.cleanliness||3) - (p.habits?.cleanliness||3)));
 
-        // Cleanliness: small penalty for difference, max +5
-        score += Math.max(0, 5 - Math.abs((myProfile.habits?.cleanliness || 3) - (p.habits?.cleanliness || 3)));
+    // Vibe score
+    score += Math.max(0, 10 - Math.abs((myProfile.vibeScore||5) - (p.vibeScore||5)));
 
-        // Vibe
-        score += Math.max(0, 10 - Math.abs((myProfile.vibeScore || 5) - (p.vibeScore || 5)));
+    // 🔥 Bonus if rooms available
+    if (p.availableRooms && p.availableRooms > 0) {
+      score += 15; // you can adjust points
+    }
 
-        // Gender preference could be added later
+    return { profile: p, compatibilityScore: Math.round(Math.max(0, score)) };
+  });
 
-        return { profile: p, compatibilityScore: Math.round(Math.max(0, score)) };
-      });
-    
+
     scoredProfiles.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
-    res.json(scoredProfiles);
+
+    res.json({
+      page,
+      limit,
+      results: scoredProfiles,
+      hasMore: scoredProfiles.length === limit
+    });
   } catch (err) {
     console.error('Match fetch error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 // Get profile by user ID (for viewing others' profiles)
 // Node.js / Express example
 const Booking = require('../models/Booking');
@@ -368,6 +387,32 @@ router.put('/update-coordinates', authMiddleware, async (req, res) => {
     res.json({ message: "Coordinates updated", profile });
   } catch (err) {
     console.error("Update coordinates error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Anyone can say "I have rooms available"
+router.put('/available-rooms', authMiddleware, async (req, res) => {
+  try {
+    const { availableRooms } = req.body;
+
+    const profile = await RoommateProfile.findOne({ user: req.user._id });
+    if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+    const rooms = Math.max(0, Math.min(10, Number(availableRooms) || 0));
+
+    profile.availableRooms = rooms;
+    profile.lookingForRoommate = rooms > 0;
+
+    await profile.save();
+
+    res.json({
+      success: true,
+      availableRooms: profile.availableRooms,
+      lookingForRoommate: profile.lookingForRoommate
+    });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });

@@ -103,6 +103,7 @@ const [notificationCount, setNotificationCount] = useState(0);
           <Link to="/roommateMatches" className="nav-link text-white hover:text-[#d16729]">
             Roommate Finder
           </Link>
+          <Link to="/posts" className="nav-link text-white hover:text-[#d16729]">Posts</Link>
         </div>
 
         {/* Desktop User Section */}

@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import axios from "axios";
 const Dashboard = () => {
   const { user, logout } = useAuth();
  const navigate = useNavigate();
  const [coupon, setCoupon] = useState(null);
+ const [myProfile, setMyProfile] = useState(null);
  useEffect(() => {
   const fetchCoupon = async () => {
     if (!user?._id) return;
@@ -22,6 +24,21 @@ const Dashboard = () => {
   const handleLogout = async () => {
     await logout();
   };
+
+  const fetchProfile = async () => {
+  try {
+    const { data } = await axios.get("/api/roommate/profile", {
+      headers: { Authorization: `Bearer ${user.token}` }
+    });
+    setMyProfile(data);
+  } catch (err) {
+    // No profile yet → that's fine
+  }
+};
+
+useEffect(() => {
+  if (user) fetchProfile();
+}, [user]);
 
   return (
     <div className="min-h-screen bg-[#f0f0ee] py-10 pt-32">
@@ -191,6 +208,58 @@ const Dashboard = () => {
             </Link>
           </div>
         </div>
+
+
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 mt-5">
+  <h3 className="text-xl font-semibold mb-4 flex items-center">
+    <span className="mr-2">I have room(s) available</span>
+    {myProfile?.lookingForRoommate && (
+      <span className="text-green-500 text-xl">Live</span>
+    )}
+  </h3>
+
+  <div className="flex items-center space-x-4">
+    <input
+      type="number"
+      min="0"
+      max="10"
+      defaultValue={myProfile?.availableRooms || 0}
+      id="roomsInput"
+      className="w-24 px-4 py-3 border border-gray-300 rounded-xl text-center text-lg font-medium focus:outline-none focus:ring-2 focus:ring-amber-500"
+      placeholder="0"
+    />
+    <span className="text-gray-600">room(s) available</span>
+  </div>
+
+  <button
+    onClick={async () => {
+      const value = document.getElementById("roomsInput").value || "0";
+      try {
+        await axios.put("/api/roommate/available-rooms", 
+          { availableRooms: value },
+          { headers: { Authorization: `Bearer ${user.token}` } }
+        );
+        toast.success(
+          value > 0 
+            ? `Now showing ${value} room(s) available!` 
+            : "No longer showing rooms"
+        );
+        fetchProfile();
+      } catch (err) {
+        toast.error("Failed to update");
+      }
+    }}
+    className="mt-4 bg-[#d16729] hover:bg-[#b5571f] text-white font-bold px-8 py-3 rounded-xl transition"
+  >
+    {myProfile?.lookingForRoommate ? "Update" : "Go Live"}
+  </button>
+
+  <p className="text-sm text-gray-500 mt-3">
+    {myProfile?.lookingForRoommate
+      ? `You're visible in roommate finder with ${myProfile.availableRooms} room(s)`
+      : "Let people know you have space!"}
+  </p>
+</div>
 
       </div>
     </div>

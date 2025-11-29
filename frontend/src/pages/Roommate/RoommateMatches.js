@@ -13,166 +13,205 @@ import MyConnections from "./MyConnections";
 // 📌 Haversine distance function
 const getDistance = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
-  const R = 6371; // Earth radius in km
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) ** 2;
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c); // km
+  return Math.round(R * c);
 };
 
 
 const RoommateMatches = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+
   const [matches, setMatches] = useState([]);
   const [profileCreated, setProfileCreated] = useState(null);
+  const [myProfile, setMyProfile] = useState(null);
+  const [connectedUserIds, setConnectedUserIds] = useState([]);
+
+  // Swipe & UI states
   const [currentIndex, setCurrentIndex] = useState(0);
   const [exitX, setExitX] = useState(0);
   const [direction, setDirection] = useState(0);
   const [imageIndex, setImageIndex] = useState(0);
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+
   const cardRef = useRef(null);
+
   const currentMatch = matches[currentIndex] || null;
   const currentImages = currentMatch?.profile?.images || [];
-const [myProfile, setMyProfile] = useState(null);
-const [connectedUserIds, setConnectedUserIds] = useState([]);
 const [mobileShowConnections, setMobileShowConnections] = useState(false);
 
   
 
+  const updateMyLocation = async () => {
+    if (!user) return;
 
-const updateMyLocation = async () => {
-  if (!user) return;
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude, longitude } = pos.coords;
 
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    const { latitude, longitude } = pos.coords;
-
-    try {
-      await axios.put(
-        "/api/roommate/update-coordinates",
-        { latitude, longitude },
-        { headers: { Authorization: `Bearer ${user.token}` } }
-      );
-
-      console.log("Coordinates updated:", latitude, longitude);
-    } catch (err) {
-      console.error("Failed to update coordinates:", err);
-    }
-  });
-};
-
-useEffect(() => {
-  if (user) {
-    updateMyLocation();
-  }
-}, [user]);
-
-
-const fetchConnectedUsers = useCallback(async () => {
-  try {
-    const { data } = await axios.get("/api/connections/connections", {
-      headers: { Authorization: `Bearer ${user.token}` }
+      try {
+        await axios.put(
+          "/api/roommate/update-coordinates",
+          { latitude, longitude },
+          { headers: { Authorization: `Bearer ${user.token}` } }
+        );
+      } catch (err) {
+        console.error("Failed to update coordinates:", err);
+      }
     });
+  };
 
-    const ids = data.map(conn => conn.otherUser?._id);
-    setConnectedUserIds(ids);
-  } catch (err) {
-    console.error("Failed to fetch connected users", err);
-  }
-}, [user]);
+  useEffect(() => {
+    if (user) updateMyLocation();
+  }, [user]);
 
 
+  // -------------------------------------------
+  // 🟦 Fetch connected users
+  // -------------------------------------------
+  const fetchConnectedUsers = useCallback(async () => {
+    try {
+      const { data } = await axios.get("/api/connections/connections", {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
 
-  // Fetch user profile
+      const ids = data.map(conn => conn.otherUser?._id);
+      setConnectedUserIds(ids);
+    } catch (err) {
+      console.error("Failed to fetch connected users", err);
+    }
+  }, [user]);
+
+
+  // -------------------------------------------
+  // 🟦 Fetch my profile
+  // -------------------------------------------
   const fetchProfile = useCallback(async () => {
     if (!user) return setProfileCreated(false);
+
     try {
-        const { data } = await axios.get("/api/roommate/profile", {
-      headers: { Authorization: `Bearer ${user.token}` }
-    });
-      console.log(data);
-      setMyProfile(data);  
+      const { data } = await axios.get("/api/roommate/profile", {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+
+      setMyProfile(data);
       setProfileCreated(true);
+
     } catch {
       setProfileCreated(false);
     }
   }, [user]);
 
-  
-useEffect(() => {
-  if (user) {
-    fetchConnectedUsers();
-    fetchProfile();
-  }
-}, [user, fetchProfile, fetchConnectedUsers]);
+
+  // Fetch profile + connections on mount
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+      fetchConnectedUsers();
+    }
+  }, [user, fetchProfile, fetchConnectedUsers]);
 
 
-  //  Fetch matches
-  // Fetch matches only when profile and connected users are ready
-const fetchMatches = useCallback(async () => {
-  if (!user || !myProfile) return;
-  setLoading(true);
+  // -------------------------------------------
+  // 🟦 Fetch matches (pagination)
+  // -------------------------------------------
+  const fetchMatches = useCallback(async (nextPage = 1) => {
+    if (!user || !myProfile || !hasMore) return;
 
-  try {
-    const { data } = await axios.get('/api/roommate/matches', {
-      headers: { Authorization: `Bearer ${user.token}` },
-    });
+    setLoading(true);
 
-    // Filter and add distance immediately
-    const filtered = data
-      .map((m) => {
-        const myLat = myProfile?.coordinates?.coordinates?.[1];
-        const myLng = myProfile?.coordinates?.coordinates?.[0];
-        const theirLat = m.profile?.coordinates?.coordinates?.[1];
-        const theirLng = m.profile?.coordinates?.coordinates?.[0];
-        const distance = getDistance(myLat, myLng, theirLat, theirLng);
-        return { ...m, distance };
-      })
-      .filter((m) => !connectedUserIds.includes(m.profile?.user?._id));
+    try {
+      const { data } = await axios.get(
+        `/api/roommate/matches?page=${nextPage}&limit=10`,
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
 
-    setMatches(filtered);
-  } catch (err) {
-    console.error(err);
-    toast.error(err?.response?.data?.message || 'Failed to fetch matches');
-  } finally {
+      const filtered = data.results
+        .map(m => {
+          const p = m.profile;
+          const myLat = myProfile?.coordinates?.coordinates?.[1];
+          const myLng = myProfile?.coordinates?.coordinates?.[0];
+          const theirLat = p?.coordinates?.coordinates?.[1];
+          const theirLng = p?.coordinates?.coordinates?.[0];
+          const distance = getDistance(myLat, myLng, theirLat, theirLng);
+          return { ...m, distance };
+        })
+        .filter(m => !connectedUserIds.includes(m.profile?.user?._id));
+
+      setMatches(prev => [...prev, ...filtered]);
+      setHasMore(data.hasMore);
+      setPage(nextPage);
+
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || 'Failed to fetch matches');
+    }
+
     setLoading(false);
-  }
-}, [user, myProfile, connectedUserIds]);
+
+  }, [user, myProfile, connectedUserIds, hasMore]);
 
 
-  useEffect(() => { if (user) fetchProfile(); }, [user, fetchProfile]);
- useEffect(() => {
-  if (profileCreated && myProfile) {
-    fetchMatches();
-  }
-}, [profileCreated, myProfile, fetchMatches]);
+  // Load first matches after profile is ready
+  useEffect(() => {
+    if (profileCreated && myProfile) {
+      fetchMatches(1);
+    }
+  }, [profileCreated, myProfile, fetchMatches]);
 
-  useEffect(() => { setImageIndex(0); }, [currentIndex]);
 
-  // Swipe logic
+  // Reset image index on new match
+  useEffect(() => {
+    setImageIndex(0);
+  }, [currentIndex]);
+
+
+
+  // -------------------------------------------
+  // 🟦 Swipe Logic
+  // -------------------------------------------
   const handleCardExit = (dir) => {
     setExitX(dir === 'right' ? 600 : -600);
     setDirection(dir === 'right' ? 1 : -1);
+
     setTimeout(() => {
-      setCurrentIndex(prev => (prev + 1) % matches.length);
+      const nextIndex = currentIndex + 1;
+
+      // Load next page if we reach near end
+      if (nextIndex >= matches.length - 2 && hasMore) {
+        fetchMatches(page + 1);
+      }
+
+      setCurrentIndex(nextIndex % matches.length);
       setExitX(0);
       setImageIndex(0);
     }, 250);
   };
 
+
   const handleDragEnd = (_, info) => {
     if (!currentMatch) return;
-    if (Math.abs(info.offset.x) > 100) handleCardExit(info.offset.x > 0 ? 'right' : 'left');
+    if (Math.abs(info.offset.x) > 100) {
+      handleCardExit(info.offset.x > 0 ? 'right' : 'left');
+    }
   };
 
-  const handleSwipe = (dir) => { if (currentMatch) handleCardExit(dir); };
+  const handleSwipe = (dir) => {
+    if (currentMatch) handleCardExit(dir);
+  };
 
   const handleCardClick = () => {
     if (currentMatch?.profile?.user?._id) {
@@ -180,14 +219,20 @@ const fetchMatches = useCallback(async () => {
     }
   };
 
+
+  // -------------------------------------------
+  // 🟦 Like / Send Request
+  // -------------------------------------------
   const handleLike = async (matchUserId) => {
     handleSwipe('right');
+
     try {
       await axios.post(
         '/api/connections/send',
         { receiverId: matchUserId },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
+
       toast.success('Connection request sent!');
     } catch (err) {
       console.error(err);
@@ -195,16 +240,23 @@ const fetchMatches = useCallback(async () => {
     }
   };
 
+
+  // -------------------------------------------
+  // 🟦 Formatting Helper
+  // -------------------------------------------
   const formatAgeAndGender = (profile) => {
     const age = profile.age || 'N/A';
     const gender = profile.gender ? `, ${profile.gender.charAt(0).toUpperCase()}` : '';
     return `${age}${gender}`;
   };
 
+
+  // -------------------------------------------
+  // 🟦 Required returns before JSX
+  // -------------------------------------------
   if (!user) return <p className="text-center mt-10">Login to see roommate matches</p>;
   if (profileCreated === null) return <p className="text-center mt-10">Checking profile...</p>;
   if (!profileCreated) return <RoommateProfile onProfileCreated={() => setProfileCreated(true)} />;
-
   return (
     <div className="min-h-screen  flex flex-col">
       <div className="flex flex-col lg:flex-row w-full flex-grow pt-24">
@@ -226,7 +278,7 @@ const fetchMatches = useCallback(async () => {
     {loading ? (
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Finding perfect roommates...</p>
+        <p className="mt-4 text-gray-600">This may take a few moments — hang tight!</p>
       </div>
     ) : matches.length > 0 ? (
       <AnimatePresence mode="wait">
@@ -250,44 +302,69 @@ const fetchMatches = useCallback(async () => {
             }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
           >
-            <div className="w-full h-3/5 relative">
-              {currentImages.length > 0 ? (
-                <AnimatePresence mode="wait">
-                  <motion.img
-                    key={currentImages[imageIndex]}
-                    src={currentImages[imageIndex]}
-                    alt="Roommate"
-                    className="w-full h-full object-cover absolute inset-0"
-                    initial={{ opacity: 0, scale: 1.1 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.4 }}
-                  />
-                </AnimatePresence>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  No photos available
-                </div>
-              )}
+            <div className="w-full h-3/5 relative rounded-xl overflow-hidden">
 
-              <div className="absolute top-4 left-4 bg-white/90 px-4 py-2 rounded-full shadow-lg">
-                <span className="font-bold text-amber-600 text-sm">
-                  {currentMatch.compatibilityScore}% Match
-                </span>
-              </div>
+  {/* === IMAGE / SLIDER === */}
+  {currentImages.length > 0 ? (
+    <AnimatePresence mode="wait">
+      <motion.img
+        key={currentImages[imageIndex]}
+        src={currentImages[imageIndex]}
+        alt="Roommate"
+        className="w-full h-full object-cover absolute inset-0"
+        initial={{ opacity: 0, scale: 1.1 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        transition={{ duration: 0.4 }}
+      />
+    </AnimatePresence>
+  ) : (
+    <div className="w-full h-full flex items-center justify-center text-gray-400">
+      No photos available
+    </div>
+  )}
 
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
-                <h2 className="text-2xl font-bold text-white mb-1">
-                  {currentMatch.profile.user?.name}{formatAgeAndGender(currentMatch.profile)}
-                </h2>
-                <div className="flex items-center space-x-4 text-white/90 text-sm">
-                  <span>
-                    {currentMatch.distance !== null ? `${currentMatch.distance} km away` : "Distance unavailable"}
-                  </span>
-                  <span>₹{currentMatch.profile.budget || 'N/A'}/month</span>
-                </div>
-              </div>
-            </div>
+  {/* === MATCH SCORE BADGE === */}
+  <div className="absolute top-4 left-4 bg-white/90 px-4 py-2 rounded-full shadow-lg">
+    <span className="font-bold text-amber-600 text-sm">
+      {currentMatch.compatibilityScore}% Match
+    </span>
+  </div>
+
+  {/* === AVAILABLE ROOMS BADGE (Fixed Position) === */}
+  {currentMatch.profile.availableRooms > 0 && (
+    <div className="absolute top-4 right-4 bg-green-600/90 backdrop-blur-md px-4 py-1.5 rounded-lg shadow-md flex items-center gap-2 border border-white/20">
+      <span className="text-white text-sm font-medium">
+        {currentMatch.profile.availableRooms} Room
+        {currentMatch.profile.availableRooms > 1 ? "s" : ""} Available
+      </span>
+    </div>
+  )}
+
+  {/* === BOTTOM GRADIENT DETAILS === */}
+  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
+
+    <h2 className="text-2xl font-bold text-white mb-1">
+      {currentMatch.profile.user?.name}
+      {formatAgeAndGender(currentMatch.profile)}
+    </h2>
+
+    <div className="flex items-center space-x-4 text-white/90 text-sm">
+      <span>
+        {currentMatch.distance !== null
+          ? `${currentMatch.distance} km away`
+          : "Distance unavailable"}
+      </span>
+
+      <span>
+        ₹{currentMatch.profile.budget || "N/A"}/month
+      </span>
+    </div>
+
+  </div>
+
+</div>
+
 
             <div className="p-4 flex-grow flex flex-col justify-center">
               <p className="text-base text-gray-700 leading-relaxed text-center">
@@ -352,7 +429,7 @@ const fetchMatches = useCallback(async () => {
             {loading ? (
               <div className="text-center">
                 <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-amber-500 mx-auto"></div>
-                <p className="mt-4 text-gray-600 text-lg">Finding perfect roommates...</p>
+                <p className="mt-4 text-gray-600 text-lg">This may take a few moments — hang tight!</p>
               </div>
             ) : matches.length > 0 ? (
               <AnimatePresence mode="wait">
@@ -377,48 +454,80 @@ const fetchMatches = useCallback(async () => {
                     transition={{ type: "spring", stiffness: 350, damping: 25 }}
                     ref={cardRef}
                   >
-                    <div className="w-full h-3/5 relative">
-                      {currentImages.length > 0 ? (
-                        <AnimatePresence mode="wait">
-                          <motion.img
-                            key={currentImages[imageIndex]}
-                            src={currentImages[imageIndex]}
-                            alt="Roommate"
-                            className="w-full h-full object-cover absolute inset-0"
-                            initial={{ opacity: 0, scale: 1.1 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.4 }}
-                          />
-                        </AnimatePresence>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-lg">
-                          No photos available
-                        </div>
-                      )}
-                      <div className="absolute top-4 left-4 bg-white/90 px-4 py-2 rounded-full shadow-lg">
-                        <span className="font-bold text-amber-600 text-sm">{currentMatch.compatibilityScore}% Match</span>
-                      </div>
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
-                        <h2 className="text-3xl font-bold text-white mb-1">
-                          {currentMatch.profile.user?.name}{formatAgeAndGender(currentMatch.profile)}
-                        </h2>
-                        <div className="flex items-center space-x-6 text-white/90 text-base">
-                          <span>
-  {currentMatch.distance !== null ? `${currentMatch.distance} km away` : "Distance unavailable"}
-</span>
+                    <div className="w-full h-3/5 relative rounded-xl overflow-hidden">
+  {/* === IMAGE / SLIDER === */}
+  {currentImages.length > 0 ? (
+    <AnimatePresence mode="wait">
+      <motion.img
+        key={currentImages[imageIndex]}
+        src={currentImages[imageIndex]}
+        alt="Roommate"
+        className="w-full h-full object-cover absolute inset-0"
+        initial={{ opacity: 0, scale: 1.1 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        transition={{ duration: 0.4 }}
+      />
+    </AnimatePresence>
+  ) : (
+    <div className="w-full h-full flex items-center justify-center text-gray-400 text-lg">
+      No photos available
+    </div>
+  )}
+
+  {/* === MATCH SCORE BADGE === */}
+  <div className="absolute top-4 left-4 bg-white/95 px-4 py-2 rounded-full shadow-xl backdrop-blur-sm border border-gray-200">
+    <span className="font-semibold text-amber-600 text-sm">
+      {currentMatch.compatibilityScore}% Match
+    </span>
+  </div>
+
+  {/* === AVAILABLE ROOMS BADGE === */}
+  {/* AVAILABLE ROOMS BADGE */}
+{currentMatch.profile.lookingForRoommate &&
+  currentMatch.profile.availableRooms > 0 && (
+    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-xl border border-green-500/30 px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+      <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></div>
+      <span className="text-green-700 font-semibold text-sm tracking-wide">
+        {currentMatch.profile.availableRooms} Room
+        {currentMatch.profile.availableRooms > 1 ? "s" : ""} Available
+      </span>
+    </div>
+  )}
 
 
-                          <span>₹{currentMatch.profile.budget || 'N/A'}/month</span>
-                        </div>
-                      </div>
-                    </div>
+  {/* === BOTTOM DETAILS GRADIENT BAR === */}
+  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-6">
+
+    <h2 className="text-3xl font-bold text-white drop-shadow-lg mb-2">
+      {currentMatch.profile.user?.name}
+      {formatAgeAndGender(currentMatch.profile)}
+    </h2>
+
+    <div className="flex items-center space-x-6 text-white/90 text-base">
+
+      {/* Distance */}
+      <span>
+        {currentMatch.distance !== null
+          ? `${currentMatch.distance} km away`
+          : "Distance unavailable"}
+      </span>
+
+      {/* Budget */}
+      <span className="font-medium">
+        ₹{currentMatch.profile.budget || "N/A"}/month
+      </span>
+    </div>
+  </div>
+</div>
+
 
                     <div className="p-4 flex-grow flex flex-col justify-center">
                       <p className="text-base text-gray-700 leading-relaxed text-center">
                         {currentMatch.profile.bio || 'No bio provided'}
                       </p>
                     </div>
+
                   </motion.div>
                 )}
               </AnimatePresence>
