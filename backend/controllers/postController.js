@@ -4,11 +4,12 @@ const { cloudinary } = require('../config/cloudinary'); // your existing config
 const User = require('../models/User');
 const RoommateProfile = require('../models/RoommateProfile');
 // Create Post
+// controllers/postController.js
+// controllers/postController.js
 const createPost = async (req, res) => {
   try {
     const { content } = req.body;
-    console.log("Files received:", req.files); // ← ADD THIS LINE
-    console.log("Body:", req.body);
+
     if (!content?.trim()) {
       return res.status(400).json({ message: 'Content is required' });
     }
@@ -25,11 +26,31 @@ const createPost = async (req, res) => {
       media
     });
 
-    const populatedPost = await Post.findById(post._id)
-      .populate('author', 'name avatar userType');
+    // Manually populate author + avatar (consistent with getPosts)
+    const author = await User.findById(req.user._id).select('name userType');
+    const profile = await RoommateProfile.findOne({ user: req.user._id }).select('images');
 
-    req.io.emit('newPost', populatedPost);
+    const populatedPost = {
+      ...post.toObject(),
+      author: {
+        ...author.toObject(),
+        avatar: profile?.images?.[0] || '/default-avatar.png'
+      }
+    };
+
+    // SAFE SOCKET EMIT — This was crashing your request!
+    if (req.io) {
+      try {
+        req.io.emit('newPost', populatedPost);
+      } catch (emitError) {
+        console.error('Socket emit failed (non-critical):', emitError);
+        // Don't crash the whole request!
+      }
+    }
+
+    // Send response FIRST — this must come before any risky operations
     res.status(201).json(populatedPost);
+
   } catch (err) {
     console.error('Create Post Error:', err);
     res.status(500).json({ message: 'Server error' });

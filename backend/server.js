@@ -38,7 +38,10 @@ app.post(
   paymentsRouter
 );
 
+const compression = require('compression');
+
 // Normal Middleware
+app.use(compression());
 app.use(cors({
   origin: allowedOrigins,
   credentials: true

@@ -247,7 +247,7 @@ const renderPersonalInfo = () => (
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Add some photos (up to 3)</label>
+        <label className="block text-sm font-medium mb-1">Add a photo</label>
         <input 
           type="file" 
           accept="image/*" 

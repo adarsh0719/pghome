@@ -9,32 +9,20 @@ const Property = require('../models/Property');
 require('dotenv').config();
 
 // Multer memory storage (we'll either upload to Cloudinary or convert to base64)
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } }); // 5MB limit
+const upload = multer({ storage: multer.memoryStorage() }); // No size limit
 
-// Optional: Cloudinary setup (if you set CLOUDINARY_URL or config below)
-let cloudinary = null;
-try {
-  cloudinary = require('cloudinary').v2;
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-  });
-} catch (e) {
-  // cloudinary not configured; we'll fallback to base64 data URIs
-  cloudinary = null;
-}
-
+// Import shared Cloudinary config
+const { cloudinary } = require('../config/cloudinary');
 
 // Create or update profile
 router.post('/profile', authMiddleware, upload.array('images', 3), async (req, res) => {
   try {
     // body.habits expected as JSON string from frontend
     const {
-  age, gender, budget, durationOfStay, bio, vibeScore,
-  location, latitude, longitude,stayingInPG,
-  currentPGId,
-} = req.body;
+      age, gender, budget, durationOfStay, bio, vibeScore,
+      location, latitude, longitude, stayingInPG,
+      currentPGId,
+    } = req.body;
 
 
     let habits = {};
@@ -45,57 +33,51 @@ router.post('/profile', authMiddleware, upload.array('images', 3), async (req, r
       habits = {};
     }
 
-    // handle images: prefer Cloudinary if configured
+    // handle images: FORCE Cloudinary
     let imageUrls = [];
     if (req.files && req.files.length) {
-      if (cloudinary && process.env.CLOUDINARY_UPLOAD_PRESET) {
-        // upload sequentially (for simplicity). In production consider parallel and error handling.
-        for (const f of req.files) {
-          const uploaded = await cloudinary.uploader.upload_stream_async
-            ? await uploadToCloudinaryBuffer(f) // custom helper below
-            : await cloudinary.uploader.upload_stream({ resource_type: 'image' }); // fallback (should not reach)
-          if (uploaded && uploaded.secure_url) imageUrls.push(uploaded.secure_url);
+      console.log('Uploading', req.files.length, 'images to Cloudinary...');
+
+      for (const f of req.files) {
+        // Strict upload: if this fails, the whole request should probably fail, 
+        // or at least we shouldn't fallback to base64.
+        const uploaded = await uploadToCloudinaryBuffer(f);
+        if (uploaded && uploaded.secure_url) {
+          imageUrls.push(uploaded.secure_url);
+        } else {
+          throw new Error('Failed to upload image to Cloudinary');
         }
-      } else if (cloudinary) {
-        // cloudinary configured without helper - use uploadStream below
-        for (const f of req.files) {
-          const uploaded = await uploadToCloudinaryBuffer(f);
-          if (uploaded && uploaded.secure_url) imageUrls.push(uploaded.secure_url);
-        }
-      } else {
-        // fallback: store as base64 data URI (not recommended for production)
-        imageUrls = req.files.map(file => `data:${file.mimetype};base64,${file.buffer.toString('base64')}`);
       }
     }
 
     const data = {
-  age: Number(age),
-  gender,
-  budget: Number(budget),
-  durationOfStay: Number(durationOfStay),
-  bio,
-  location: location || "",
-  coordinates: {
-    type: "Point",
-    coordinates: [
-      parseFloat(longitude) || 0,
-      parseFloat(latitude) || 0
-    ]
-  },
-  habits: {
-    smoking: Boolean(habits.smoking),
-    drinking: Boolean(habits.drinking),
-    pets: Boolean(habits.pets),
-    parties: Boolean(habits.parties),
-    guests: Boolean(habits.guests),
-    cleanliness: Number(habits.cleanliness || 3),
-    sleepSchedule: habits.sleepSchedule || 'flexible'
-  },
-  vibeScore: Number(vibeScore || 5),
-  images: imageUrls,
-  stayingInPG: stayingInPG === 'true' || stayingInPG === true,
-  currentPG: (stayingInPG === 'true' && currentPGId) ? currentPGId : null,
-};
+      age: Number(age),
+      gender,
+      budget: Number(budget),
+      durationOfStay: Number(durationOfStay),
+      bio,
+      location: location || "",
+      coordinates: {
+        type: "Point",
+        coordinates: [
+          parseFloat(longitude) || 0,
+          parseFloat(latitude) || 0
+        ]
+      },
+      habits: {
+        smoking: Boolean(habits.smoking),
+        drinking: Boolean(habits.drinking),
+        pets: Boolean(habits.pets),
+        parties: Boolean(habits.parties),
+        guests: Boolean(habits.guests),
+        cleanliness: Number(habits.cleanliness || 3),
+        sleepSchedule: habits.sleepSchedule || 'flexible'
+      },
+      vibeScore: Number(vibeScore || 5),
+      images: imageUrls,
+      stayingInPG: stayingInPG === 'true' || stayingInPG === true,
+      currentPG: (stayingInPG === 'true' && currentPGId) ? currentPGId : null,
+    };
 
 
     let profile = await RoommateProfile.findOne({ user: req.user._id });
@@ -105,15 +87,15 @@ router.post('/profile', authMiddleware, upload.array('images', 3), async (req, r
       profile = new RoommateProfile({ user: req.user._id, ...data });
     }
 
-  await profile.save();
+    await profile.save();
 
-//  Save roommateProfile to User document
-await User.findByIdAndUpdate(req.user._id, {
-  roommateProfile: profile._id
-});
+    //  Save roommateProfile to User document
+    await User.findByIdAndUpdate(req.user._id, {
+      roommateProfile: profile._id
+    });
 
-const populated = await profile.populate('user', 'name email roommateProfile');
-res.json(populated);
+    const populated = await profile.populate('user', 'name email roommateProfile');
+    res.json(populated);
 
   } catch (err) {
     console.error('Profile save error:', err);
@@ -136,7 +118,9 @@ async function uploadToCloudinaryBuffer(file) {
 // Get existing profile
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
-    const profile = await RoommateProfile.findOne({ user: req.user._id }).populate('user', 'name email');
+    const profile = await RoommateProfile.findOne({ user: req.user._id })
+      .populate('user', 'name email')
+      .lean(); // Optimize with lean()
     if (!profile) return res.status(404).json({ message: 'Profile not found' });
     res.json(profile);
   } catch (err) {
@@ -145,57 +129,158 @@ router.get('/profile', authMiddleware, async (req, res) => {
   }
 });
 
+// Alias /me to /profile
+router.get('/me', authMiddleware, async (req, res) => {
+  const start = Date.now();
+  console.log('GET /me START', start);
+  try {
+    const profile = await RoommateProfile.findOne({ user: req.user._id })
+      .populate('user', 'name email')
+      .lean(); // Optimize with lean()
+    if (!profile) return res.status(404).json({ message: 'Profile not found' });
+    res.json(profile);
+  } catch (err) {
+    console.error('Profile fetch error:', err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    console.log('GET /me Total took:', Date.now() - start, 'ms');
+  }
+});
+
 // Get matches
 // GET /matches?page=1&limit=10
 router.get('/matches', authMiddleware, async (req, res) => {
+  const start = Date.now();
+  console.log('GET /matches START', start);
   try {
-    const myProfile = await RoommateProfile.findOne({ user: req.user._id });
+    const startProfile = Date.now();
+    const myProfile = await RoommateProfile.findOne({ user: req.user._id }).lean();
+    console.log('Fetch MyProfile took:', Date.now() - startProfile, 'ms');
+
     if (!myProfile) return res.status(400).json({ message: 'Create your profile first' });
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const skip = (page - 1) * limit;
 
-    // Fetch only the needed profiles
-    const allProfiles = await RoommateProfile.find({ user: { $ne: req.user._id } })
-      .populate('user', 'name email')
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    // Build Aggregation Pipeline
+    const pipeline = [];
 
-    const scoredProfiles = allProfiles
-  .filter(p => p.user)
-  .map((p) => {
-    let score = 0;
-
-    // Age & Budget
-    score += Math.max(0, 20 - Math.abs(myProfile.age - p.age));
-    score += Math.max(0, 10 - Math.abs(myProfile.budget - p.budget) / 1000);
-
-    // Habits
-    ['smoking','drinking','pets','parties','guests'].forEach(f => {
-      if (myProfile.habits?.[f] === p.habits?.[f]) score += 5;
-    });
-
-    // Sleep schedule
-    if ((myProfile.habits?.sleepSchedule || '') === (p.habits?.sleepSchedule || '')) score += 5;
-
-    // Cleanliness
-    score += Math.max(0, 5 - Math.abs((myProfile.habits?.cleanliness||3) - (p.habits?.cleanliness||3)));
-
-    // Vibe score
-    score += Math.max(0, 10 - Math.abs((myProfile.vibeScore||5) - (p.vibeScore||5)));
-
-    // 🔥 Bonus if rooms available
-    if (p.availableRooms && p.availableRooms > 0) {
-      score += 15; // you can adjust points
+    // 1. Geo-spatial Match (Must be first if used)
+    if (myProfile.coordinates && myProfile.coordinates.coordinates &&
+      (myProfile.coordinates.coordinates[0] !== 0 || myProfile.coordinates.coordinates[1] !== 0)) {
+      pipeline.push({
+        $geoNear: {
+          near: {
+            type: "Point",
+            coordinates: myProfile.coordinates.coordinates
+          },
+          distanceField: "distance",
+          spherical: true,
+          // maxDistance: 50000 // Optional: limit to 50km?
+        }
+      });
     }
 
-    return { profile: p, compatibilityScore: Math.round(Math.max(0, score)) };
-  });
+    // 2. Exclude self
+    pipeline.push({
+      $match: {
+        user: { $ne: req.user._id }
+      }
+    });
 
+    // 3. Pagination (Apply early to reduce processing)
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limit });
 
+    // 4. Lookup User details
+    pipeline.push({
+      $lookup: {
+        from: 'users',
+        localField: 'user',
+        foreignField: '_id',
+        as: 'user'
+      }
+    });
+    pipeline.push({ $unwind: '$user' });
+
+    // 5. Project only needed fields
+    pipeline.push({
+      $project: {
+        images: { $slice: ['$images', 1] }, // Return first image for preview
+        // images: { $literal: [] }, // Optimization: Load images lazily
+        'user.name': 1,
+        'user.email': 1,
+        'user._id': 1,
+        age: 1,
+        gender: 1,
+        budget: 1,
+        bio: 1,
+        coordinates: 1,
+        availableRooms: 1,
+        lookingForRoommate: 1,
+        location: 1,
+        habits: 1,
+        vibeScore: 1,
+        distance: 1 // from geoNear
+      }
+    });
+
+    const startCandidates = Date.now();
+    const allProfiles = await RoommateProfile.aggregate(pipeline);
+    console.log('Fetch Candidates (Agg) took:', Date.now() - startCandidates, 'ms');
+
+    const startScoring = Date.now();
+    const scoredProfiles = allProfiles
+      .map((p) => {
+        let score = 0;
+
+        // Age & Budget
+        score += Math.max(0, 20 - Math.abs(myProfile.age - p.age));
+        score += Math.max(0, 10 - Math.abs(myProfile.budget - p.budget) / 1000);
+
+        // Habits
+        ['smoking', 'drinking', 'pets', 'parties', 'guests'].forEach(f => {
+          if (myProfile.habits?.[f] === p.habits?.[f]) score += 5;
+        });
+
+        // Sleep schedule
+        if ((myProfile.habits?.sleepSchedule || '') === (p.habits?.sleepSchedule || '')) score += 5;
+
+        // Cleanliness
+        score += Math.max(0, 5 - Math.abs((myProfile.habits?.cleanliness || 3) - (p.habits?.cleanliness || 3)));
+
+        // Vibe score
+        score += Math.max(0, 10 - Math.abs((myProfile.vibeScore || 5) - (p.vibeScore || 5)));
+
+        // 🔥 Bonus if rooms available
+        if (p.availableRooms && p.availableRooms > 0) {
+          score += 15;
+        }
+
+        return {
+          _id: p._id,
+          compatibilityScore: Math.round(Math.max(0, score)),
+          distance: p.distance ? Math.round(p.distance / 1000) : 0, // Convert meters to km
+          profile: {
+            _id: p._id,
+            user: p.user,
+            age: p.age,
+            gender: p.gender,
+            budget: p.budget,
+            images: p.images || [],
+            bio: p.bio,
+            coordinates: p.coordinates,
+            availableRooms: p.availableRooms,
+            lookingForRoommate: p.lookingForRoommate,
+            location: p.location
+          }
+        };
+      });
+
+    // Sort by compatibility
     scoredProfiles.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
+    console.log('Scoring took:', Date.now() - startScoring, 'ms');
 
     res.json({
       page,
@@ -205,6 +290,20 @@ router.get('/matches', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('Match fetch error:', err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    console.log('GET /matches Total took:', Date.now() - start, 'ms');
+  }
+});
+
+// Lazy Load Images
+router.get('/profile/:userId/images', authMiddleware, async (req, res) => {
+  try {
+    const profile = await RoommateProfile.findOne({ user: req.params.userId }).select('images');
+    if (!profile) return res.status(404).json({ message: 'Profile not found' });
+    res.json(profile.images || []);
+  } catch (err) {
+    console.error('Image fetch error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -262,19 +361,26 @@ router.put("/profile", authMiddleware, upload.array("images", 3), async (req, re
     }
 
     // Append new images
-   // Append new images and remove marked ones
-if (req.files && req.files.length > 0) {
-  const newImages = req.files.map(
-    (file) => `data:${file.mimetype};base64,${file.buffer.toString("base64")}`
-  );
-  existing.images = [...(existing.images || []), ...newImages];
-}
+    // Append new images and remove marked ones
+    // Append new images
+    if (req.files && req.files.length > 0) {
+      const newImageUrls = [];
+      for (const f of req.files) {
+        const uploaded = await uploadToCloudinaryBuffer(f);
+        if (uploaded && uploaded.secure_url) {
+          newImageUrls.push(uploaded.secure_url);
+        } else {
+          throw new Error('Failed to upload image to Cloudinary (PUT)');
+        }
+      }
+      existing.images = [...(existing.images || []), ...newImageUrls];
+    }
 
-// Remove images by indices if provided
-if (req.body.removedIndices) {
-  const indices = JSON.parse(req.body.removedIndices);
-  existing.images = existing.images.filter((_, idx) => !indices.includes(idx));
-}
+    // Remove images by indices if provided
+    if (req.body.removedIndices) {
+      const indices = JSON.parse(req.body.removedIndices);
+      existing.images = existing.images.filter((_, idx) => !indices.includes(idx));
+    }
 
 
     existing.age = req.body.age || existing.age;
@@ -395,27 +501,33 @@ router.put('/update-coordinates', authMiddleware, async (req, res) => {
 router.put('/available-rooms', authMiddleware, async (req, res) => {
   try {
     const { availableRooms } = req.body;
-
     const profile = await RoommateProfile.findOne({ user: req.user._id });
-    if (!profile) return res.status(404).json({ message: "Profile not found" });
+    if (!profile) return res.status(404).json({ message: 'Profile not found' });
 
-    const rooms = Math.max(0, Math.min(10, Number(availableRooms) || 0));
-
-    profile.availableRooms = rooms;
-    profile.lookingForRoommate = rooms > 0;
+    profile.availableRooms = Number(availableRooms);
+    // Automatically set lookingForRoommate based on availableRooms
+    profile.lookingForRoommate = profile.availableRooms > 0;
 
     await profile.save();
-
-    res.json({
-      success: true,
-      availableRooms: profile.availableRooms,
-      lookingForRoommate: profile.lookingForRoommate
-    });
+    res.json(profile);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
+// Toggle "Looking for Roommate"
+router.put('/looking-for-roommate', authMiddleware, async (req, res) => {
+  try {
+    const { lookingForRoommate } = req.body;
+    const profile = await RoommateProfile.findOne({ user: req.user._id });
+    if (!profile) return res.status(404).json({ message: 'Profile not found' });
+
+    profile.lookingForRoommate = Boolean(lookingForRoommate);
+    await profile.save();
+    res.json(profile);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 module.exports = router;

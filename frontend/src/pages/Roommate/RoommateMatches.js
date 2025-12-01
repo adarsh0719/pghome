@@ -12,7 +12,16 @@ import MyConnections from "./MyConnections";
 
 // 📌 Haversine distance function
 const getDistance = (lat1, lon1, lat2, lon2) => {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  // Check for null or undefined explicitly, allowing 0 as a valid coordinate
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+
+  // Treat (0,0) as invalid/unset for this app context if you prefer, 
+  // but strictly speaking 0 is valid. 
+  // However, if the app defaults to 0,0, we might want to return null for 0,0.
+  // Let's assume 0,0 is "unset".
+  if (lat1 === 0 && lon1 === 0) return null;
+  if (lat2 === 0 && lon2 === 0) return null;
+
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -20,8 +29,8 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * Math.PI / 180) *
-      Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) ** 2;
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.round(R * c);
@@ -36,7 +45,6 @@ const RoommateMatches = () => {
   const [profileCreated, setProfileCreated] = useState(null);
   const [myProfile, setMyProfile] = useState(null);
   const [connectedUserIds, setConnectedUserIds] = useState([]);
-
   // Swipe & UI states
   const [currentIndex, setCurrentIndex] = useState(0);
   const [exitX, setExitX] = useState(0);
@@ -47,17 +55,93 @@ const RoommateMatches = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [fetchingMore, setFetchingMore] = useState(false);
 
   const cardRef = useRef(null);
 
   const currentMatch = matches[currentIndex] || null;
   const currentImages = currentMatch?.profile?.images || [];
-const [mobileShowConnections, setMobileShowConnections] = useState(false);
+  const [mobileShowConnections, setMobileShowConnections] = useState(false);
+  const locationUpdated = useRef(false);
 
-  
 
-  const updateMyLocation = async () => {
+
+  // -------------------------------------------
+  // 🟦 Fetch Data (Profile + Matches)
+  // -------------------------------------------
+  const fetchData = useCallback(async () => {
+    if (!user?.token) return;
+    console.time('fetchData');
+    setLoading(true);
+    const controller = new AbortController();
+
+    try {
+      // 1. Fetch My Profile & Connections in Parallel
+      console.time('fetchProfileAndConnections');
+      const [profileRes, connectionsRes] = await Promise.all([
+        axios.get('/api/roommate/me', {
+          headers: { Authorization: `Bearer ${user.token}` },
+          signal: controller.signal
+        }).catch(err => null), // Allow failure if profile doesn't exist
+
+        axios.get('/api/connections/ids', {
+          headers: { Authorization: `Bearer ${user.token}` },
+          signal: controller.signal
+        })
+      ]);
+      console.timeEnd('fetchProfileAndConnections');
+
+      const profile = profileRes?.data;
+      // connectionsRes.data is now just an array of IDs ['id1', 'id2']
+      const connectionIds = connectionsRes?.data || [];
+
+      setMyProfile(profile);
+      setProfileCreated(!!profile);
+      setConnectedUserIds(connectionIds);
+
+      // 2. If profile exists, fetch matches
+      if (profile) {
+        console.time('fetchMatches');
+        // 🚀 INCREASED LIMIT: Fetch 100 matches initially
+        const matchesRes = await axios.get('/api/roommate/matches?limit=100', {
+          headers: { Authorization: `Bearer ${user.token}` },
+          signal: controller.signal
+        });
+        console.timeEnd('fetchMatches');
+
+        const matchesData = matchesRes.data.results.map(m => {
+          const p = m.profile;
+          const myLat = profile.coordinates?.coordinates?.[1];
+          const myLng = profile.coordinates?.coordinates?.[0];
+          const theirLat = p?.coordinates?.coordinates?.[1];
+          const theirLng = p?.coordinates?.coordinates?.[0];
+          const distance = getDistance(myLat, myLng, theirLat, theirLng);
+          return { ...m, distance };
+        }).filter(m => !connectionIds.includes(m.profile?.user?._id));
+
+        setMatches(matchesData);
+        setHasMore(matchesRes.data.hasMore);
+      }
+
+    } catch (err) {
+      if (axios.isCancel(err)) {
+        console.log('Request canceled:', err.message);
+      } else {
+        console.error(err);
+        toast.error("Failed to load data");
+      }
+    } finally {
+      setLoading(false);
+      console.timeEnd('fetchData');
+    }
+
+    return () => controller.abort();
+  }, [user?.token]);
+
+  // Define updateMyLocation with useCallback to avoid dependency cycles if used in useEffect
+  const updateMyLocation = useCallback(async () => {
     if (!user) return;
+    // toast.info("Updating location..."); // Optional: don't spam toast on auto-update
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const { latitude, longitude } = pos.coords;
@@ -68,74 +152,46 @@ const [mobileShowConnections, setMobileShowConnections] = useState(false);
           { latitude, longitude },
           { headers: { Authorization: `Bearer ${user.token}` } }
         );
+        toast.success("Location updated! Refreshing matches...", { toastId: 'loc-update' });
+        fetchData(); // Refresh matches with new location
       } catch (err) {
         console.error("Failed to update coordinates:", err);
       }
+    }, (err) => {
+      console.error("Location access denied or error:", err);
     });
-  };
+  }, [user, fetchData]); // Added fetchData to dependency
 
+  // Auto-update location on mount
   useEffect(() => {
-    if (user) updateMyLocation();
-  }, [user]);
-
-
-  // -------------------------------------------
-  // 🟦 Fetch connected users
-  // -------------------------------------------
-  const fetchConnectedUsers = useCallback(async () => {
-    try {
-      const { data } = await axios.get("/api/connections/connections", {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-
-      const ids = data.map(conn => conn.otherUser?._id);
-      setConnectedUserIds(ids);
-    } catch (err) {
-      console.error("Failed to fetch connected users", err);
+    if (user && !locationUpdated.current) {
+      locationUpdated.current = true;
+      // console.log("Attempting auto-update of location...");
+      updateMyLocation();
     }
-  }, [user]);
-
+  }, [user, updateMyLocation]);
 
   // -------------------------------------------
-  // 🟦 Fetch my profile
+  // 🟦 Initial Load
   // -------------------------------------------
-  const fetchProfile = useCallback(async () => {
-    if (!user) return setProfileCreated(false);
-
-    try {
-      const { data } = await axios.get("/api/roommate/profile", {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-
-      setMyProfile(data);
-      setProfileCreated(true);
-
-    } catch {
-      setProfileCreated(false);
-    }
-  }, [user]);
-
-
-  // Fetch profile + connections on mount
   useEffect(() => {
-    if (user) {
-      fetchProfile();
-      fetchConnectedUsers();
-    }
-  }, [user, fetchProfile, fetchConnectedUsers]);
-
+    let cleanup;
+    fetchData().then(c => cleanup = c);
+    return () => cleanup && cleanup();
+  }, [fetchData]);
 
   // -------------------------------------------
-  // 🟦 Fetch matches (pagination)
+  // 🟦 Fetch matches (pagination only)
   // -------------------------------------------
-  const fetchMatches = useCallback(async (nextPage = 1) => {
-    if (!user || !myProfile || !hasMore) return;
+  const fetchMoreMatches = useCallback(async (nextPage) => {
+    if (!user || !hasMore || fetchingMore) return;
 
-    setLoading(true);
+    setFetchingMore(true);
+    console.log(`🟦 fetchMoreMatches started for page ${nextPage}`);
 
     try {
       const { data } = await axios.get(
-        `/api/roommate/matches?page=${nextPage}&limit=10`,
+        `/api/roommate/matches?page=${nextPage}&limit=100`,
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
 
@@ -154,51 +210,95 @@ const [mobileShowConnections, setMobileShowConnections] = useState(false);
       setMatches(prev => [...prev, ...filtered]);
       setHasMore(data.hasMore);
       setPage(nextPage);
+      console.log(`🟦 fetchMoreMatches done. Added ${filtered.length} matches.`);
 
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || 'Failed to fetch matches');
+    } finally {
+      setFetchingMore(false);
     }
+  }, [user?.token, hasMore, myProfile, connectedUserIds, fetchingMore]);
 
-    setLoading(false);
-
-  }, [user, myProfile, connectedUserIds, hasMore]);
-
-
-  // Load first matches after profile is ready
+  // -------------------------------------------
+  // 🟦 Background Fetch Trigger
+  // -------------------------------------------
   useEffect(() => {
-    if (profileCreated && myProfile) {
-      fetchMatches(1);
+    // If we have initial matches (page 1) and there are more to fetch,
+    // trigger a background fetch for the next page immediately.
+    if (page === 1 && matches.length > 0 && hasMore && !fetchingMore && !loading) {
+      console.log("🟦 Triggering background fetch for page 2");
+      fetchMoreMatches(2);
     }
-  }, [profileCreated, myProfile, fetchMatches]);
-
+  }, [page, matches.length, hasMore, fetchingMore, loading, fetchMoreMatches]);
 
   // Reset image index on new match
   useEffect(() => {
     setImageIndex(0);
   }, [currentIndex]);
 
-
-
   // -------------------------------------------
-  // 🟦 Swipe Logic
+  // 🖼️ Lazy Load Images
+  // -------------------------------------------
+  useEffect(() => {
+    const loadImages = async () => {
+      if (!currentMatch || !currentMatch.profile?.user?._id) return;
+
+      // If images are already loaded (and not just empty array from backend default), skip
+      // We assume if length > 0, it might be loaded. 
+      // BUT backend now returns [], so we always need to fetch if it's empty.
+      // To avoid re-fetching if truly empty, we could check a flag, but for now let's fetch.
+      // Optimization: Check if we already fetched for this ID in a local cache or if images > 0
+
+      if (currentMatch.profile.images && currentMatch.profile.images.length > 0) return;
+
+      try {
+        const res = await axios.get(`/api/roommate/profile/${currentMatch.profile.user._id}/images`, {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+
+        if (res.data && res.data.length > 0) {
+          setMatches(prev => {
+            const newMatches = [...prev];
+            if (newMatches[currentIndex]) {
+              newMatches[currentIndex] = {
+                ...newMatches[currentIndex],
+                profile: {
+                  ...newMatches[currentIndex].profile,
+                  images: res.data
+                }
+              };
+            }
+            return newMatches;
+          });
+        }
+      } catch (err) {
+        console.error("Failed to lazy load images", err);
+      }
+    };
+
+    loadImages();
+  }, [currentIndex, currentMatch?.profile?.user?._id, user?.token]);
+
   // -------------------------------------------
   const handleCardExit = (dir) => {
     setExitX(dir === 'right' ? 600 : -600);
     setDirection(dir === 'right' ? 1 : -1);
 
+    // 🚀 FIX: Reduced timeout for instant feel, removed "stuck" lag
     setTimeout(() => {
       const nextIndex = currentIndex + 1;
 
       // Load next page if we reach near end
-      if (nextIndex >= matches.length - 2 && hasMore) {
-        fetchMatches(page + 1);
+      if (nextIndex >= matches.length - 4 && hasMore) {
+        fetchMoreMatches(page + 1);
       }
 
       setCurrentIndex(nextIndex % matches.length);
-      setExitX(0);
       setImageIndex(0);
-    }, 250);
+
+      // Reset exitX after animation completes to avoid jump
+      setTimeout(() => setExitX(0), 500);
+    }, 10);
   };
 
 
@@ -251,173 +351,187 @@ const [mobileShowConnections, setMobileShowConnections] = useState(false);
   };
 
 
+  // 🖼️ Optimize Cloudinary Image
+  const optimizeImage = (url) => {
+    if (!url) return '';
+    if (typeof url !== 'string') return '';
+    if (!url.includes("cloudinary.com")) return url;
+    if (!url.includes("/upload/")) return url;
+
+    const parts = url.split("/upload/");
+    return `${parts[0]}/upload/w_500,f_auto,q_auto/${parts[1]}`;
+  };
+
   // -------------------------------------------
   // 🟦 Required returns before JSX
   // -------------------------------------------
   if (!user) return <p className="text-center mt-10">Login to see roommate matches</p>;
   if (profileCreated === null) return <p className="text-center mt-10">Checking profile...</p>;
-  if (!profileCreated) return <RoommateProfile onProfileCreated={() => setProfileCreated(true)} />;
+if (!profileCreated) return <RoommateProfile onProfileCreated={() => {
+    setProfileCreated(true);
+    fetchData();
+  }} />;
   return (
     <div className="min-h-screen  flex flex-col">
       <div className="flex flex-col lg:flex-row w-full flex-grow pt-24">
         {mobileShowConnections ? (
-    <div className="lg:hidden w-full p-4">
-      <div className="bg-white rounded-3xl shadow-xl p-4">
-        <MyConnections />
-      </div>
-    </div>
-  ) : (
-    <div className="lg:hidden flex-1 flex flex-col items-center justify-center px-6 pb-10">
-      <div className="w-full max-w-sm mx-auto flex flex-col items-center justify-center">
-  <div className="text-center mt-4 mb-6">
-    <h1 className="text-3xl font-bold text-amber-700 mb-2">Find Your Roommate</h1>
-    <p className="text-gray-700">Swipe right to like, left to pass</p>
-  </div>
-
-  <div className="relative w-full h-[70vh] flex items-center justify-center">
-    {loading ? (
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
-        <p className="mt-4 text-gray-600">This may take a few moments — hang tight!</p>
-      </div>
-    ) : matches.length > 0 ? (
-      <AnimatePresence mode="wait">
-        {currentMatch && (
-          <motion.div
-            key={currentMatch.profile._id}
-            className="absolute w-full h-full bg-white rounded-3xl shadow-2xl overflow-hidden cursor-pointer flex flex-col"
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.7}
-            onDragEnd={handleDragEnd}
-            onClick={handleCardClick}
-            initial={{ scale: 0.9, y: 20, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{
-              x: exitX,
-              rotate: direction * 25,
-              opacity: 0,
-              scale: 0.85,
-              transition: { duration: 0.4 }
-            }}
-            transition={{ type: "spring", stiffness: 350, damping: 25 }}
-          >
-            <div className="w-full h-3/5 relative rounded-xl overflow-hidden">
-
-  {/* === IMAGE / SLIDER === */}
-  {currentImages.length > 0 ? (
-    <AnimatePresence mode="wait">
-      <motion.img
-        key={currentImages[imageIndex]}
-        src={currentImages[imageIndex]}
-        alt="Roommate"
-        className="w-full h-full object-cover absolute inset-0"
-        initial={{ opacity: 0, scale: 1.1 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        transition={{ duration: 0.4 }}
-      />
-    </AnimatePresence>
-  ) : (
-    <div className="w-full h-full flex items-center justify-center text-gray-400">
-      No photos available
-    </div>
-  )}
-
-  {/* === MATCH SCORE BADGE === */}
-  <div className="absolute top-4 left-4 bg-white/90 px-4 py-2 rounded-full shadow-lg">
-    <span className="font-bold text-amber-600 text-sm">
-      {currentMatch.compatibilityScore}% Match
-    </span>
-  </div>
-
-  {/* === AVAILABLE ROOMS BADGE (Fixed Position) === */}
-  {currentMatch.profile.availableRooms > 0 && (
-    <div className="absolute top-4 right-4 bg-green-600/90 backdrop-blur-md px-4 py-1.5 rounded-lg shadow-md flex items-center gap-2 border border-white/20">
-      <span className="text-white text-sm font-medium">
-        {currentMatch.profile.availableRooms} Room
-        {currentMatch.profile.availableRooms > 1 ? "s" : ""} Available
-      </span>
-    </div>
-  )}
-
-  {/* === BOTTOM GRADIENT DETAILS === */}
-  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
-
-    <h2 className="text-2xl font-bold text-white mb-1">
-      {currentMatch.profile.user?.name}
-      {formatAgeAndGender(currentMatch.profile)}
-    </h2>
-
-    <div className="flex items-center space-x-4 text-white/90 text-sm">
-      <span>
-        {currentMatch.distance !== null
-          ? `${currentMatch.distance} km away`
-          : "Distance unavailable"}
-      </span>
-
-      <span>
-        ₹{currentMatch.profile.budget || "N/A"}/month
-      </span>
-    </div>
-
-  </div>
-
-</div>
-
-
-            <div className="p-4 flex-grow flex flex-col justify-center">
-              <p className="text-base text-gray-700 leading-relaxed text-center">
-                {currentMatch.profile.bio || 'No bio provided'}
-              </p>
+          <div className="lg:hidden w-full p-4">
+            <div className="bg-white rounded-3xl shadow-xl p-4">
+              <MyConnections />
             </div>
-          </motion.div>
+          </div>
+        ) : (
+          <div className="lg:hidden flex-1 flex flex-col items-center justify-center px-6 pb-10">
+            <div className="w-full max-w-sm mx-auto flex flex-col items-center justify-center">
+              <div className="text-center mt-4 mb-6">
+                <h1 className="text-3xl font-bold text-amber-700 mb-2">Find Your Roommate</h1>
+                <p className="text-gray-700">Swipe right to like, left to pass</p>
+              </div>
+
+              <div className="relative w-full h-[70vh] flex items-center justify-center">
+                {loading ? (
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">This may take a few moments — hang tight!</p>
+                  </div>
+                ) : matches.length > 0 ? (
+                  <AnimatePresence>
+                    {currentMatch && (
+                      <motion.div
+                        key={currentMatch.profile._id}
+                        className="absolute w-full h-full bg-white rounded-3xl shadow-2xl overflow-hidden cursor-pointer flex flex-col"
+                        drag="x"
+                        dragConstraints={{ left: 0, right: 0 }}
+                        dragElastic={0.7}
+                        onDragEnd={handleDragEnd}
+                        onClick={handleCardClick}
+                        initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                        animate={{ scale: 1, y: 0, opacity: 1 }}
+                        exit={{
+                          x: exitX,
+                          rotate: direction * 25,
+                          opacity: 0,
+                          scale: 0.85,
+                          transition: { duration: 0.4 }
+                        }}
+                        transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                      >
+                        <div className="w-full h-3/5 relative rounded-xl overflow-hidden">
+
+                          {/* === IMAGE / SLIDER === */}
+                          {currentImages.length > 0 ? (
+                            <AnimatePresence mode="wait">
+                              <motion.img
+                                key={currentImages[imageIndex]}
+                                src={optimizeImage(currentImages[imageIndex])}
+                                alt="Roommate"
+                                className="w-full h-full object-cover absolute inset-0"
+                                initial={{ opacity: 0, scale: 1.1 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ duration: 0.4 }}
+                              />
+                            </AnimatePresence>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                              No photos available
+                            </div>
+                          )}
+
+                          {/* === MATCH SCORE BADGE === */}
+                          <div className="absolute top-4 left-4 bg-white/90 px-4 py-2 rounded-full shadow-lg">
+                            <span className="font-bold text-amber-600 text-sm">
+                              {currentMatch.compatibilityScore}% Match
+                            </span>
+                          </div>
+
+                          {/* === AVAILABLE ROOMS BADGE (Fixed Position) === */}
+                          {currentMatch.profile.availableRooms > 0 && (
+                            <div className="absolute top-4 right-4 bg-green-600/90 backdrop-blur-md px-4 py-1.5 rounded-lg shadow-md flex items-center gap-2 border border-white/20">
+                              <span className="text-white text-sm font-medium">
+                                {currentMatch.profile.availableRooms} Room
+                                {currentMatch.profile.availableRooms > 1 ? "s" : ""} Available
+                              </span>
+                            </div>
+                          )}
+
+                          {/* === BOTTOM GRADIENT DETAILS === */}
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
+
+                            <h2 className="text-2xl font-bold text-white mb-1">
+                              {currentMatch.profile.user?.name}
+                              {formatAgeAndGender(currentMatch.profile)}
+                            </h2>
+
+                            <div className="flex items-center space-x-4 text-white/90 text-sm">
+                              <span>
+                                {currentMatch.distance !== null
+                                  ? `${currentMatch.distance} km away`
+                                  : "Distance unavailable"}
+                              </span>
+
+                              <span>
+                                ₹{currentMatch.profile.budget || "N/A"}/month
+                              </span>
+                            </div>
+
+                          </div>
+
+                        </div>
+
+
+                        <div className="p-4 flex-grow flex flex-col justify-center">
+                          <p className="text-base text-gray-700 leading-relaxed text-center">
+                            {currentMatch.profile.bio || 'No bio provided'}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                ) : (
+                  <div className="text-center text-gray-600 bg-white rounded-3xl p-10 shadow-xl">
+                    <div className="text-6xl mb-4">🏠</div>
+                    <h3 className="text-xl font-semibold mb-2">No matches found</h3>
+                    <p className="mb-6 text-gray-500">We couldn’t find any roommates that match your preferences.</p>
+                    <button
+                      onClick={() => setProfileCreated(false)}
+                      className="bg-amber-500 text-white px-6 py-3 rounded-2xl font-bold text-lg hover:bg-amber-600 shadow-lg"
+                    >
+                      Update Preferences
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {matches.length > 0 && (
+                <div className="w-full max-w-sm flex justify-around items-center mt-6">
+                  <button
+                    className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center"
+                    onClick={() => handleSwipe('left')}
+                    disabled={loading || !currentMatch}
+                  >
+                    <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+
+                  <button
+                    className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center"
+                    onClick={() => handleLike(currentMatch?.profile?.user?._id)}
+                    disabled={loading || !currentMatch}
+                  >
+                    <svg className="w-10 h-10 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
+
+          </div>
         )}
-      </AnimatePresence>
-    ) : (
-      <div className="text-center text-gray-600 bg-white rounded-3xl p-10 shadow-xl">
-        <div className="text-6xl mb-4">🏠</div>
-        <h3 className="text-xl font-semibold mb-2">No matches found</h3>
-        <p className="mb-6 text-gray-500">We couldn’t find any roommates that match your preferences.</p>
-        <button
-          onClick={() => setProfileCreated(false)}
-          className="bg-amber-500 text-white px-6 py-3 rounded-2xl font-bold text-lg hover:bg-amber-600 shadow-lg"
-        >
-          Update Preferences
-        </button>
-      </div>
-    )}
-  </div>
-
-  {matches.length > 0 && (
-    <div className="w-full max-w-sm flex justify-around items-center mt-6">
-      <button
-        className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center"
-        onClick={() => handleSwipe('left')}
-        disabled={loading || !currentMatch}
-      >
-        <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-
-      <button
-        className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center"
-        onClick={() => handleLike(currentMatch?.profile?.user?._id)}
-        disabled={loading || !currentMatch}
-      >
-        <svg className="w-10 h-10 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clipRule="evenodd" />
-        </svg>
-      </button>
-    </div>
-  )}
-</div>
-
-    </div>
-  )}
         {/* Left: Match Section */}
         <div className="hidden lg:flex flex-1 flex-col items-center justify-center px-6">
           <div className="text-center mt-4 mb-8">
@@ -455,71 +569,70 @@ const [mobileShowConnections, setMobileShowConnections] = useState(false);
                     ref={cardRef}
                   >
                     <div className="w-full h-3/5 relative rounded-xl overflow-hidden">
-  {/* === IMAGE / SLIDER === */}
-  {currentImages.length > 0 ? (
-    <AnimatePresence mode="wait">
-      <motion.img
-        key={currentImages[imageIndex]}
-        src={currentImages[imageIndex]}
-        alt="Roommate"
-        className="w-full h-full object-cover absolute inset-0"
-        initial={{ opacity: 0, scale: 1.1 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        transition={{ duration: 0.4 }}
-      />
-    </AnimatePresence>
-  ) : (
-    <div className="w-full h-full flex items-center justify-center text-gray-400 text-lg">
-      No photos available
-    </div>
-  )}
+                      {/* === IMAGE / SLIDER === */}
+                      {currentImages.length > 0 ? (
+                        <AnimatePresence mode="wait">
+                          <motion.img
+                            key={currentImages[imageIndex]}
+                            src={currentImages[imageIndex]}
+                            alt="Roommate"
+                            className="w-full h-full object-cover absolute inset-0"
+                            initial={{ opacity: 0, scale: 1.1 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.4 }}
+                          />
+                        </AnimatePresence>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-lg">
+                          No photos available
+                        </div>
+                      )}
 
-  {/* === MATCH SCORE BADGE === */}
-  <div className="absolute top-4 left-4 bg-white/95 px-4 py-2 rounded-full shadow-xl backdrop-blur-sm border border-gray-200">
-    <span className="font-semibold text-amber-600 text-sm">
-      {currentMatch.compatibilityScore}% Match
-    </span>
-  </div>
+                      {/* === MATCH SCORE BADGE === */}
+                      <div className="absolute top-4 left-4 bg-white/95 px-4 py-2 rounded-full shadow-xl backdrop-blur-sm border border-gray-200">
+                        <span className="font-semibold text-amber-600 text-sm">
+                          {currentMatch.compatibilityScore}% Match
+                        </span>
+                      </div>
 
-  {/* === AVAILABLE ROOMS BADGE === */}
-  {/* AVAILABLE ROOMS BADGE */}
-{currentMatch.profile.lookingForRoommate &&
-  currentMatch.profile.availableRooms > 0 && (
-    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-xl border border-green-500/30 px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
-      <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></div>
-      <span className="text-green-700 font-semibold text-sm tracking-wide">
-        {currentMatch.profile.availableRooms} Room
-        {currentMatch.profile.availableRooms > 1 ? "s" : ""} Available
-      </span>
-    </div>
-  )}
+                      {/* === AVAILABLE ROOMS BADGE === */}
+                      {/* AVAILABLE ROOMS BADGE */}
+                      {currentMatch.profile.availableRooms > 0 && (
+                        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-xl border border-green-500/30 px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></div>
+                          <span className="text-green-700 font-semibold text-sm tracking-wide">
+                            {currentMatch.profile.availableRooms} Room
+                            {currentMatch.profile.availableRooms > 1 ? "s" : ""} Available
+                          </span>
+                        </div>
+                      )}
 
 
-  {/* === BOTTOM DETAILS GRADIENT BAR === */}
-  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-6">
+                      {/* === BOTTOM DETAILS GRADIENT BAR === */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-6">
 
-    <h2 className="text-3xl font-bold text-white drop-shadow-lg mb-2">
-      {currentMatch.profile.user?.name}
-      {formatAgeAndGender(currentMatch.profile)}
-    </h2>
+                        <h2 className="text-3xl font-bold text-white drop-shadow-lg mb-2">
+                          {currentMatch.profile.user?.name}
+                          {formatAgeAndGender(currentMatch.profile)}
+                        </h2>
 
-    <div className="flex items-center space-x-6 text-white/90 text-base">
+                        <div className="flex items-center space-x-6 text-white/90 text-base">
 
-      {/* Distance */}
-      <span>
-        {currentMatch.distance !== null
-          ? `${currentMatch.distance} km away`
-          : "Distance unavailable"}
-      </span>
+                          {/* Distance */}
+                          <span>
+                            {currentMatch.distance !== null
+                              ? `${currentMatch.distance} km away`
+                              : "Distance unavailable"}
+                          </span>
 
-      {/* Budget */}
-      <span className="font-medium">
-        ₹{currentMatch.profile.budget || "N/A"}/month
-      </span>
-    </div>
-  </div>
-</div>
+                          {/* Budget */}
+                          <span className="font-medium">
+                            ₹{currentMatch.profile.budget || "N/A"}/month
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
 
                     <div className="p-4 flex-grow flex flex-col justify-center">
@@ -572,24 +685,24 @@ const [mobileShowConnections, setMobileShowConnections] = useState(false);
           )}
         </div>
 
-       <div className="hidden lg:block w-1/3 border-l p-6">
-  <div className="bg-white rounded-3xl shadow-xl p-4">
-    <MyConnections />
-  </div>
-</div>
+        <div className="hidden lg:block w-1/3 border-l p-6">
+          <div className="bg-white rounded-3xl shadow-xl p-4">
+            <MyConnections />
+          </div>
+        </div>
 
 
-        
+
       </div>
       {/* MOBILE ONLY SWITCH BUTTON */}
-<div className="lg:hidden fixed bottom-6 right-6 z-50">
-  <button
-    onClick={() => setMobileShowConnections(!mobileShowConnections)}
-    className="bg-amber-600 text-white px-5 py-3 rounded-full shadow-xl font-semibold"
-  >
-    {mobileShowConnections ? "Back to Matches" : "My Connections"}
-  </button>
-</div>
+      <div className="lg:hidden fixed bottom-6 right-6 z-50">
+        <button
+          onClick={() => setMobileShowConnections(!mobileShowConnections)}
+          className="bg-amber-600 text-white px-5 py-3 rounded-full shadow-xl font-semibold"
+        >
+          {mobileShowConnections ? "Back to Matches" : "My Connections"}
+        </button>
+      </div>
 
       {/* Footer */}
       <Footer />

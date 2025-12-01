@@ -46,16 +46,16 @@ const RoommateProfileSchema = new mongoose.Schema({
     default: null
   },
   // models/RoommateProfile.js
-availableRooms: {
-  type: Number,
-  default: 0,
-  min: 0,
-  max: 10
-},
-lookingForRoommate: {
-  type: Boolean,
-  default: false
-},
+  availableRooms: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 10
+  },
+  lookingForRoommate: {
+    type: Boolean,
+    default: false
+  },
 
   createdAt: { type: Date, default: Date.now }
 });
@@ -71,6 +71,8 @@ RoommateProfileSchema.index({ "habits.pets": 1 });
 RoommateProfileSchema.index({ "habits.parties": 1 });
 RoommateProfileSchema.index({ "habits.guests": 1 });
 RoommateProfileSchema.index({ "coordinates": "2dsphere" });
+
+
 
 
 module.exports = mongoose.model('RoommateProfile', RoommateProfileSchema);

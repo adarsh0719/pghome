@@ -13,20 +13,44 @@ const CreatePost = () => {
   const queryClient = useQueryClient();
  const [profileAvatar, setProfileAvatar] = useState(null);
 
-  const mutation = useMutation(
-    () => {
-      const formData = new FormData();
-      formData.append('content', content);
-      files.forEach(file => formData.append('media', file));
-      return axios.post('/api/posts', formData);
+const mutation = useMutation(
+  async () => {
+    const formData = new FormData();
+    formData.append('content', content.trim());
+
+    // Append each file correctly
+    files.forEach((file) => {
+      formData.append('media', file); // 'media' must match multer field name
+    });
+
+    return axios.post('/api/posts', formData, {
+  timeout: 60000,
+});
+  },
+  {
+    onSuccess: (response) => {
+      const newPost = response.data;
+
+      // Optimistically update cache
+      queryClient.setQueryData('posts', (old = []) => [newPost, ...old]);
+
+      // Reset form
+      setContent('');
+      setFiles([]);
+      setPreviews([]);
+
+      // Navigate smoothly
+      navigate('/posts');
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('posts');
-        navigate('/posts');
-      }
-    }
-  );
+    onError: (error) => {
+      console.error('Post creation failed:', error);
+      alert(
+        error.response?.data?.message ||
+        'Failed to create post. Please try again.'
+      );
+    },
+  }
+);
 
   const handleFiles = (e) => {
     const selected = Array.from(e.target.files);
