@@ -68,8 +68,9 @@ app.use('/api/roommate', require('./routes/roommate'));
 app.use('/api/kyc', require('./routes/kyc'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/connections', require('./routes/connectionRoutes'));
-app.use('/api/reviews',  require('./routes/reviewRoutes'));
+app.use('/api/reviews', require('./routes/reviewRoutes'));
 app.use('/api/posts', require('./routes/postRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 // ---  SOCKET.IO SETUP (WebRTC + Chat + Notifications) ---
 io.on('connection', (socket) => {
   console.log(' New socket connected:', socket.id);

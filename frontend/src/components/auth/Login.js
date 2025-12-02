@@ -21,7 +21,7 @@ const Login = () => {
 
     if (result.success) {
       const userInfo = result.user;
-      if (userInfo.isAdmin) navigate('/kyc-admin');
+      if (userInfo.isAdmin) navigate('/admin');
       else navigate('/dashboard');
     } else {
       alert(result.message || 'Login failed');

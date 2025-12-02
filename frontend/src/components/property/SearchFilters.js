@@ -146,16 +146,7 @@ const SearchFilters = ({ onSearch }) => {
   </div>
 </div>
 
-<label className="flex items-center space-x-2">
-  <input
-    type="checkbox"
-    checked={localFilters.sortByNearest}
-    onChange={(e) =>
-      setLocalFilters(prev => ({ ...prev, sortByNearest: e.target.checked }))
-    }
-  />
-  <span>Sort by Nearest</span>
-</label>
+
 
       <div className="flex space-x-2 mt-4">
         <button

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes,Route, Navigate,useLocation  } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -28,7 +28,7 @@ import PaymentSuccess from './pages/Payment/PaymentSuccess';
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
 import OwnerBookings from './pages/Payment/OwnerBookings';
-import { SocketProvider } from './context/SocketContext'; 
+import { SocketProvider } from './context/SocketContext';
 import NotificationsPage from './pages/notifypage/NotificationsPage';
 import ForgetPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
@@ -37,12 +37,14 @@ import VerifyResetOtp from './components/auth/VerifyResetOtp';
 import EditProperty from './pages/Properties/EditProperty';
 import PostsFeed from './pages/posts/PostsFeed';
 import CreatePost from './pages/posts/CreatePost';
+import AdminDashboard from './pages/Admin/AdminDashboard';
+
 const queryClient = new QueryClient();
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  
+
   // Show loader while checking token/user
   if (loading) {
     return (
@@ -59,26 +61,27 @@ const ProtectedRoute = ({ children }) => {
 
   return children;
 };
+
 // Owner Only Route
 const OwnerRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
-        
+
       </div>
     );
   }
-  
+
   return user && user.userType === 'owner' ? children : <Navigate to="/dashboard" />;
 };
 
 // Public Route Component (redirect to dashboard if logged in)
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -86,10 +89,10 @@ const PublicRoute = ({ children }) => {
       </div>
     );
   }
-  
+
   return !user ? children : <Navigate to="/dashboard" />;
 };
-  
+
 
 function App() {
   const location = useLocation();
@@ -97,146 +100,151 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-           <SocketProvider>
+        <SocketProvider>
           <div className="App">
-             
-            {!hideNavbar && <Navbar/>}
+
+            {!hideNavbar && <Navbar />}
             <div className="main-content ">
-            <Routes>
-              <Route path="/" element={
-            
+              <Routes>
+                <Route path="/" element={
+
                   <>
-                   <LandingPage  />
-                  <Features />
-                 <DownloadApp />
-                  <Footer />
+                    <LandingPage />
+                    <Features />
+                    <DownloadApp />
+                    <Footer />
                   </>
-                  }/>
-              <Route path="/properties" element={<Properties />} />
-              <Route path="/properties/:id" element={<PropertyDetail />} />
-              
-              {/* Public routes (only accessible when not logged in) */}
-              <Route path="/login" element={
-                <PublicRoute>
-                  <Login />
-                </PublicRoute>
-              } />
-              <Route path="/register" element={
-                <PublicRoute>
-                  <Register />
-                </PublicRoute>
-              } />
-              <Route path="/forgot-password" element={
-                <PublicRoute>
-                  <ForgetPassword/>
-                </PublicRoute>
-              } />
+                } />
+                <Route path="/properties" element={<Properties />} />
+                <Route path="/properties/:id" element={<PropertyDetail />} />
 
-              <Route path="/verify-reset-otp" element={
-                <PublicRoute>
-                  <VerifyResetOtp/>
-                </PublicRoute>
-              } />
-
-              <Route path="/reset-password" element={
-                <PublicRoute>
-                  <ResetPassword/>
-                </PublicRoute>
-              } />
-              
-              
-              {/* Protected routes (only accessible when logged in) */}
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <Dashboard className='pt-44'/>
-                </ProtectedRoute>
-              } />
-              <Route path="/add-property" element={
-                <OwnerRoute>
-                  <AddProperty />
-                </OwnerRoute>
-              } />
-              <Route path="/edit-property/:id" element={
-                <OwnerRoute>
-                  <EditProperty/>
-                </OwnerRoute>
-              } />
-              <Route path="/kyc-verify" element={
-                <ProtectedRoute>
-                 <Kycverification/>
-          </ProtectedRoute>
-              } />
-              <Route path="/kyc-admin" element={
-               <ProtectedRoute>
-                 <Adminkyc/>
-                 </ProtectedRoute>
-        
-              } />
-              <Route path="/kyc-waiting" element={
-               <ProtectedRoute>
-                 <KycWaiting/>
-                 </ProtectedRoute>
-        
-              } />
-              <Route path="/subscription" element={
-                <ProtectedRoute>
-                  <Subscription />
-                </ProtectedRoute>
-              } />
-               <Route path="/videotour-guide" element={
-                  <>
-                  <LiveVideoTourinstructions />
-                </>
-              } />
-              <Route path="/roommateMatches" element={
-                <ProtectedRoute>
-                  <RoommateMatches />
-                </ProtectedRoute>
-              } />
-               <Route path="/profile/:id" element={
-                <ProtectedRoute>
-                  <ProfileInDetail />
-                </ProtectedRoute>
-              } />
-
-              <Route path="/booking-checkout" element={
-                <ProtectedRoute>
-                  <BookingCheckOut />
-                </ProtectedRoute>
-              } />
-              <Route path="/payment-success" element={
+                {/* Public routes (only accessible when not logged in) */}
+                <Route path="/login" element={
                   <PublicRoute>
-                  <PaymentSuccess />
-                 </PublicRoute>
-              } />
-              <Route path="/owner-bookings" element={
-                 <ProtectedRoute>
-                  <OwnerBookings/>
-                 </ProtectedRoute>
-              } />
-              <Route path="/notifications" element={
-                <ProtectedRoute>
-                  <NotificationsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/posts" element={
-                <ProtectedRoute>
-                <PostsFeed />
-               </ProtectedRoute>
-              } />
+                    <Login />
+                  </PublicRoute>
+                } />
+                <Route path="/register" element={
+                  <PublicRoute>
+                    <Register />
+                  </PublicRoute>
+                } />
+                <Route path="/forgot-password" element={
+                  <PublicRoute>
+                    <ForgetPassword />
+                  </PublicRoute>
+                } />
 
-             <Route path="/create-post" element={
-               <ProtectedRoute>
-                <CreatePost />
-              </ProtectedRoute>
-              } />
-              
-              
-            </Routes>
+                <Route path="/verify-reset-otp" element={
+                  <PublicRoute>
+                    <VerifyResetOtp />
+                  </PublicRoute>
+                } />
+
+                <Route path="/reset-password" element={
+                  <PublicRoute>
+                    <ResetPassword />
+                  </PublicRoute>
+                } />
+
+
+                {/* Protected routes (only accessible when logged in) */}
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Dashboard className='pt-44' />
+                  </ProtectedRoute>
+                } />
+                <Route path="/add-property" element={
+                  <OwnerRoute>
+                    <AddProperty />
+                  </OwnerRoute>
+                } />
+                <Route path="/edit-property/:id" element={
+                  <OwnerRoute>
+                    <EditProperty />
+                  </OwnerRoute>
+                } />
+                <Route path="/kyc-verify" element={
+                  <ProtectedRoute>
+                    <Kycverification />
+                  </ProtectedRoute>
+                } />
+                <Route path="/kyc-admin" element={
+                  <ProtectedRoute>
+                    <Adminkyc />
+                  </ProtectedRoute>
+
+                } />
+                <Route path="/kyc-waiting" element={
+                  <ProtectedRoute>
+                    <KycWaiting />
+                  </ProtectedRoute>
+
+                } />
+                <Route path="/subscription" element={
+                  <ProtectedRoute>
+                    <Subscription />
+                  </ProtectedRoute>
+                } />
+                <Route path="/videotour-guide" element={
+                  <>
+                    <LiveVideoTourinstructions />
+                  </>
+                } />
+                <Route path="/roommateMatches" element={
+                  <ProtectedRoute>
+                    <RoommateMatches />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile/:id" element={
+                  <ProtectedRoute>
+                    <ProfileInDetail />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/booking-checkout" element={
+                  <ProtectedRoute>
+                    <BookingCheckOut />
+                  </ProtectedRoute>
+                } />
+                <Route path="/payment-success" element={
+                  <PublicRoute>
+                    <PaymentSuccess />
+                  </PublicRoute>
+                } />
+                <Route path="/owner-bookings" element={
+                  <ProtectedRoute>
+                    <OwnerBookings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/notifications" element={
+                  <ProtectedRoute>
+                    <NotificationsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/posts" element={
+                  <ProtectedRoute>
+                    <PostsFeed />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/create-post" element={
+                  <ProtectedRoute>
+                    <CreatePost />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/admin" element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
+
+              </Routes>
             </div>
             <ToastContainer position="bottom-right" />
           </div>
-           </SocketProvider>
+        </SocketProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
