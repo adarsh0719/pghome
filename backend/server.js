@@ -76,10 +76,19 @@ io.on('connection', (socket) => {
   console.log(' New socket connected:', socket.id);
 
   // Register user's socket with their userId
-  socket.on('register_user', (userId) => {
+  socket.on('register_user', async (userId) => {
     if (!userId) return;
     userSocketMap[userId] = socket.id;
     socket.userId = userId;
+
+    // Set user as online
+    try {
+      const User = require('./models/User');
+      await User.findByIdAndUpdate(userId, { isOnline: true });
+    } catch (err) {
+      console.error('Error updating user online status:', err);
+    }
+
     console.log(` Registered user ${userId} -> socket ${socket.id}`);
   });
 
@@ -141,18 +150,28 @@ io.on('connection', (socket) => {
   });
 
   // -------- Cleanup on disconnect --------
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     console.log(' Socket disconnected:', socket.id);
     // remove user mapping
     if (socket.userId) {
       const uid = socket.userId;
       if (userSocketMap[uid] === socket.id) delete userSocketMap[uid];
+
+      // Set user as offline and update lastSeen
+      try {
+        const User = require('./models/User');
+        await User.findByIdAndUpdate(uid, { isOnline: false, lastSeen: new Date() });
+      } catch (err) {
+        console.error('Error updating user offline status:', err);
+      }
+
       console.log(` Removed mapping for user ${uid}`);
     } else {
       // fallback: remove by value if exists
       for (const uid in userSocketMap) {
         if (userSocketMap[uid] === socket.id) {
           delete userSocketMap[uid];
+          // potentially update DB here too if we knew the UID, but we don't efficiently
           break;
         }
       }

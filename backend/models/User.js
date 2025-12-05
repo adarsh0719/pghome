@@ -34,11 +34,11 @@ const userSchema = new mongoose.Schema({
     ref: 'Property'
   }],
 
-   
- // ... existing schema
-  kycStatus: { type: String, enum: ['not_submitted','pending','approved','rejected'], default: 'not_submitted' },
+
+  // ... existing schema
+  kycStatus: { type: String, enum: ['not_submitted', 'pending', 'approved', 'rejected'], default: 'not_submitted' },
   kycId: { type: mongoose.Schema.Types.ObjectId, ref: 'Kyc' },
-  isAdmin: { type: Boolean, default: false }, 
+  isAdmin: { type: Boolean, default: false },
 
   institution: {
     name: String,
@@ -57,6 +57,14 @@ const userSchema = new mongoose.Schema({
     }
   },
   isBlueTick: {
+    type: Boolean,
+    default: false
+  },
+  lastSeen: {
+    type: Date,
+    default: Date.now
+  },
+  isOnline: {
     type: Boolean,
     default: false
   },
@@ -87,13 +95,13 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
-userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
+userSchema.methods.correctPassword = async function (candidatePassword, userPassword) {
   return await bcrypt.compare(candidatePassword, userPassword);
 };
 

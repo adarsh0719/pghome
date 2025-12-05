@@ -58,8 +58,22 @@ router.get("/", protect, async (req, res) => {
 
     // 3. Batch fetch Users ONLY (No Profiles/Images for speed)
     console.time('User.find');
-    const users = await User.find({ _id: { $in: otherUserIds } }).select("name email").lean();
+    const users = await User.find({ _id: { $in: otherUserIds } })
+      .select("name email isOnline lastSeen") // Removed profilePicture from select
+      .lean();
     console.timeEnd('User.find');
+
+    // Fetch Profile Images
+    const profiles = await RoommateProfile.find({ user: { $in: otherUserIds } })
+      .select('user images')
+      .lean();
+
+    const imageMap = {};
+    profiles.forEach(p => {
+      if (p.images && p.images.length > 0) {
+        imageMap[p.user.toString()] = p.images[0];
+      }
+    });
 
     // 4. Create lookup map
     const userMap = {};
@@ -76,7 +90,10 @@ router.get("/", protect, async (req, res) => {
           _id: otherId,
           name: userObj.name || "Unknown",
           email: userObj.email || "",
-          profileImage: null // 🚀 OPTIMIZATION: Images removed for speed. Lazy load if needed.
+          profilePicture: imageMap[otherId.toString()] || null,
+          isOnline: userObj.isOnline || false,
+          lastSeen: userObj.lastSeen || null,
+          profileImage: null
         }
       };
     });

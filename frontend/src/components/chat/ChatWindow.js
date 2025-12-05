@@ -11,16 +11,25 @@ const ChatWindow = ({ chatId, receiver, onClose }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  // Local state for receiver to support updates (online status, etc.) from API
+  const [activeReceiver, setActiveReceiver] = useState(receiver);
   const bottomRef = useRef();
 
   // Connect user to socket
   useEffect(() => {
     if (user?._id) {
-      socket.emit("register", user._id);
+      socket.emit("register_user", user._id);
     }
   }, [user]);
 
-  // Fetch previous messages
+  // Update activeReceiver when prop changes initially
+  useEffect(() => {
+    if (receiver) {
+      setActiveReceiver(receiver);
+    }
+  }, [receiver]);
+
+  // Fetch previous messages & Ensure receiver info is up to date
   useEffect(() => {
     if (!chatId || !user) return;
 
@@ -30,6 +39,19 @@ const ChatWindow = ({ chatId, receiver, onClose }) => {
           headers: { Authorization: `Bearer ${user.token}` },
         });
         setMessages(data.messages || []);
+
+        // Update receiver with fresh data from backend
+        if (data.participants && data.participants.length > 0) {
+          const other = data.participants.find(p => p._id !== user._id);
+          if (other) {
+            setActiveReceiver(prev => ({
+              ...prev,
+              ...other,
+              // Ensure we keep the profile picture if backend didn't return it in this specific call (though it should)
+              profilePicture: other.profilePicture || prev?.profilePicture
+            }));
+          }
+        }
       } catch (err) {
         console.error(" Error fetching messages:", err);
       }
@@ -76,15 +98,45 @@ const ChatWindow = ({ chatId, receiver, onClose }) => {
     setText("");
   };
 
+  const getStatusText = () => {
+    if (activeReceiver?.isOnline) return "Online";
+    if (activeReceiver?.lastSeen) {
+      const date = new Date(activeReceiver.lastSeen);
+      return `Last seen ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return "";
+  };
+
   return (
     <div className="fixed bottom-6 right-6 bg-white shadow-2xl w-80 h-96 rounded-2xl flex flex-col border border-gray-200 z-50">
       {/* Header */}
       <div className="p-3 bg-amber-500 text-white font-semibold rounded-t-2xl flex justify-between items-center">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-full bg-white text-amber-600 flex items-center justify-center font-bold">
-            {receiver?.name?.[0]?.toUpperCase() || "?"}
+          {/* Profile Picture */}
+          <div className="relative">
+            {activeReceiver?.profilePicture ? (
+              <img
+                src={activeReceiver.profilePicture}
+                alt={activeReceiver.name}
+                className="w-10 h-10 rounded-full object-cover bg-white border border-white"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-white text-amber-600 flex items-center justify-center font-bold">
+                {activeReceiver?.name?.[0]?.toUpperCase() || "?"}
+              </div>
+            )}
+            {/* Online Indicator Dot */}
+            {activeReceiver?.isOnline && (
+              <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white bg-green-400"></span>
+            )}
           </div>
-          <div>{receiver?.name || "Chat"}</div>
+
+          <div className="leading-tight">
+            <div className="text-sm font-bold">{activeReceiver?.name || "Chat"}</div>
+            <div className="text-xs text-amber-100 font-normal">
+              {getStatusText()}
+            </div>
+          </div>
         </div>
         {onClose && (
           <button
@@ -107,11 +159,10 @@ const ChatWindow = ({ chatId, receiver, onClose }) => {
           return (
             <div
               key={i}
-              className={`p-2 rounded-lg max-w-[70%] ${
-                isMine
-                  ? "bg-amber-100 self-end ml-auto text-right"
-                  : "bg-gray-100 self-start text-left"
-              }`}
+              className={`p-2 rounded-lg max-w-[70%] ${isMine
+                ? "bg-amber-100 self-end ml-auto text-right"
+                : "bg-gray-100 self-start text-left"
+                }`}
             >
               {msg?.text || ""}
             </div>

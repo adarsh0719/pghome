@@ -30,8 +30,37 @@ router.post('/create', protect, async (req, res) => {
 router.get('/', protect, async (req, res) => {
   try {
     const chats = await Chat.find({ participants: req.user._id })
-      .populate('participants', 'name email')
-      .sort({ updatedAt: -1 });
+      .populate('participants', 'name email isOnline lastSeen')
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    // Fetch profile images from RoommateProfile
+    const participantIds = chats.flatMap(chat =>
+      chat.participants.map(p => p._id)
+    );
+
+    // De-dupe IDs
+    const uniqueIds = [...new Set(participantIds.map(id => id.toString()))];
+
+    const RoommateProfile = require('../models/RoommateProfile');
+    const profiles = await RoommateProfile.find({ user: { $in: uniqueIds } })
+      .select('user images')
+      .lean();
+
+    const imageMap = {};
+    profiles.forEach(p => {
+      if (p.images && p.images.length > 0) {
+        imageMap[p.user.toString()] = p.images[0];
+      }
+    });
+
+    // Attach images
+    chats.forEach(chat => {
+      chat.participants.forEach(p => {
+        p.profilePicture = imageMap[p._id.toString()] || null;
+      });
+    });
+
     res.json(chats);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -57,7 +86,7 @@ router.post('/:chatId/message', protect, async (req, res) => {
     chat.messages.push(message);
     await chat.save();
 
-    
+
     await chat.populate({ path: 'messages.sender', select: 'name _id' });
 
     res.json(chat.messages[chat.messages.length - 1]);
@@ -69,11 +98,35 @@ router.post('/:chatId/message', protect, async (req, res) => {
 
 // Get chat with messages
 router.get('/:chatId', protect, async (req, res) => {
-  const chat = await Chat.findById(req.params.chatId)
-    .populate('messages.sender', 'name');
+  try {
+    const chat = await Chat.findById(req.params.chatId)
+      .populate('messages.sender', 'name')
+      .populate('participants', 'name email isOnline lastSeen')
+      .lean();
 
-  if (!chat) return res.status(404).json({ message: 'Chat not found' });
-  res.json(chat);
+    if (!chat) return res.status(404).json({ message: 'Chat not found' });
+
+    // Fetch images
+    const RoommateProfile = require('../models/RoommateProfile');
+    const profiles = await RoommateProfile.find({
+      user: { $in: chat.participants.map(p => p._id) }
+    }).select('user images').lean();
+
+    const imageMap = {};
+    profiles.forEach(p => {
+      if (p.images && p.images.length > 0) {
+        imageMap[p.user.toString()] = p.images[0];
+      }
+    });
+
+    chat.participants.forEach(p => {
+      p.profilePicture = imageMap[p._id.toString()] || null;
+    });
+
+    res.json(chat);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 module.exports = router;
