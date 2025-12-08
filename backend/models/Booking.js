@@ -10,6 +10,12 @@ const bookingSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'paid', 'cancelled'], default: 'pending' },
   coupon: { type: String, unique: true, sparse: true },
   stripeSessionId: String,
+
+  // Referral Info
+  referralCodeApplied: { type: String },
+  discountAmount: { type: Number, default: 0 }, // Discount from engaging a code
+  rewardsUsed: { type: Number, default: 0 }, // Discount from USING own rewards
+  isReferralRewardClaimed: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Booking', bookingSchema);

@@ -44,31 +44,60 @@ const sendRequest = async (req, res) => {
 
 // ---------------------------------------------------------
 
+// ---------------------------------------------------------
+
 const getRequests = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    // 1. Get all pending requests
     const requests = await ConnectionRequest.find({
       receiver: userId,
       status: "pending"
     }).sort({ createdAt: -1 });
 
-    const finalData = await Promise.all(
-      requests.map(async (r) => {
-        const sender = await User.findById(r.sender).select("name email");
+    if (!requests.length) return res.json([]);
 
-        const rp = await RoommateProfile.findOne({ user: sender._id });
-        const profileImage = rp?.images?.[0] || null;
+    // 2. Extract unique sender IDs
+    const senderIds = [...new Set(requests.map(r => r.sender))];
 
-        return {
-          ...r.toObject(),
-          sender: {
-            ...sender.toObject(),
-            profileImage,
-          },
-        };
-      })
-    );
+    // 3. Batch fetch Users
+    const senders = await User.find(
+      { _id: { $in: senderIds } },
+      'name email'
+    ).lean();
+
+    // 4. Batch fetch profiles (for images)
+    const profiles = await RoommateProfile.find(
+      { user: { $in: senderIds } },
+      { user: 1, images: 1 }
+    ).lean();
+
+    // 5. Create Lookup Maps
+    const senderMap = {};
+    senders.forEach(u => { senderMap[u._id.toString()] = u; });
+
+    const avatarMap = {};
+    profiles.forEach(p => {
+      if (p.images && p.images.length > 0) {
+        avatarMap[p.user.toString()] = p.images[0];
+      }
+    });
+
+    // 6. Merge Data
+    const finalData = requests.map(r => {
+      const sId = r.sender.toString();
+      const senderInfo = senderMap[sId] || {};
+      const profileImage = avatarMap[sId] || null;
+
+      return {
+        ...r.toObject(),
+        sender: {
+          ...senderInfo,
+          profileImage
+        }
+      };
+    });
 
     res.json(finalData);
   } catch (err) {
@@ -158,29 +187,57 @@ const cancelRequest = async (req, res) => {
 };
 
 // ---------------------------------------------------------
+// ---------------------------------------------------------
 const getSentRequests = async (req, res) => {
   try {
+    // 1. Get requests
     const requests = await ConnectionRequest.find({
       sender: req.user._id,
       status: { $in: ["pending", "accepted"] }
     }).sort({ createdAt: -1 });
 
-    const finalData = await Promise.all(
-      requests.map(async (r) => {
-        const receiver = await User.findById(r.receiver).select("name email");
+    if (!requests.length) return res.json([]);
 
-        const rp = await RoommateProfile.findOne({ user: receiver._id });
-        const profileImage = rp?.images?.[0] || null;
+    // 2. Extract unique receiver IDs
+    const receiverIds = [...new Set(requests.map(r => r.receiver))];
 
-        return {
-          ...r.toObject(),
-          receiver: {
-            ...receiver.toObject(),
-            profileImage,
-          },
-        };
-      })
-    );
+    // 3. Batch fetch Users
+    const receivers = await User.find(
+      { _id: { $in: receiverIds } },
+      'name email'
+    ).lean();
+
+    // 4. Batch fetch profiles
+    const profiles = await RoommateProfile.find(
+      { user: { $in: receiverIds } },
+      { user: 1, images: 1 }
+    ).lean();
+
+    // 5. Maps
+    const receiverMap = {};
+    receivers.forEach(u => { receiverMap[u._id.toString()] = u; });
+
+    const avatarMap = {};
+    profiles.forEach(p => {
+      if (p.images && p.images.length > 0) {
+        avatarMap[p.user.toString()] = p.images[0];
+      }
+    });
+
+    // 6. Merge
+    const finalData = requests.map(r => {
+      const rId = r.receiver.toString();
+      const receiverInfo = receiverMap[rId] || {};
+      const profileImage = avatarMap[rId] || null;
+
+      return {
+        ...r.toObject(),
+        receiver: {
+          ...receiverInfo,
+          profileImage,
+        },
+      };
+    });
 
     res.json(finalData);
   } catch (err) {
@@ -200,5 +257,5 @@ module.exports = {
   respondRequest,
   cancelRequest,
   getSentRequests
-  
+
 };

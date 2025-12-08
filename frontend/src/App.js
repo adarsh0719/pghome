@@ -208,9 +208,9 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/payment-success" element={
-                  <PublicRoute>
+                  <ProtectedRoute>
                     <PaymentSuccess />
-                  </PublicRoute>
+                  </ProtectedRoute>
                 } />
                 <Route path="/owner-bookings" element={
                   <ProtectedRoute>

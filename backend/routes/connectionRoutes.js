@@ -93,7 +93,7 @@ router.get("/", protect, async (req, res) => {
           profilePicture: imageMap[otherId.toString()] || null,
           isOnline: userObj.isOnline || false,
           lastSeen: userObj.lastSeen || null,
-          profileImage: null
+          profileImage: imageMap[otherId.toString()] || null
         }
       };
     });

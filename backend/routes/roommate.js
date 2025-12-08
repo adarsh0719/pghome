@@ -207,8 +207,7 @@ router.get('/matches', authMiddleware, async (req, res) => {
     // 5. Project only needed fields
     pipeline.push({
       $project: {
-        images: { $slice: ['$images', 1] }, // Return first image for preview
-        // images: { $literal: [] }, // Optimization: Load images lazily
+        images: 1, // Return all images
         'user.name': 1,
         'user.email': 1,
         'user._id': 1,

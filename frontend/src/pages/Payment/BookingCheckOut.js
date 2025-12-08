@@ -16,10 +16,21 @@ const BookingCheckOut = () => {
   const [partnerEmail, setPartnerEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Referral State
+  const [referralCode, setReferralCode] = useState("");
+  const [discount, setDiscount] = useState(0);
+  const [referralMessage, setReferralMessage] = useState(null);
+  const [isCodeValid, setIsCodeValid] = useState(false);
+
+  // Rewards State
+  const [useRewards, setUseRewards] = useState(false);
+  const userRewards = user?.referralRewards || 0;
+
   if (!property) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center max-w-md w-full">
+          {/* ... existing error UI ... */}
           <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -38,8 +49,34 @@ const BookingCheckOut = () => {
     );
   }
 
-  const total = type === "double" ? property.rent * months * 2 : property.rent * months;
+  const baseTotal = type === "double" ? property.rent * months * 2 : property.rent * months;
+  let totalAfterReferral = Math.max(0, baseTotal - discount);
+
+  // Logic for Rewards
+  let rewardDiscount = 0;
+  if (useRewards && userRewards > 0) {
+    rewardDiscount = Math.min(totalAfterReferral, userRewards);
+  }
+  const finalTotal = Math.max(0, totalAfterReferral - rewardDiscount);
+
   const monthlyPerPerson = type === "double" ? property.rent : property.rent;
+
+  const handleApplyReferral = async () => {
+    if (!referralCode.trim()) return;
+    try {
+      const { data } = await axios.post("/api/bookings/validate-referral", { code: referralCode }, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      setDiscount(data.discount);
+      setIsCodeValid(true);
+      setReferralMessage({ type: 'success', text: `Success! ₹${data.discount} discount applied.` });
+      toast.success("Referral code applied!");
+    } catch (err) {
+      setDiscount(0);
+      setIsCodeValid(false);
+      setReferralMessage({ type: 'error', text: err.response?.data?.message || "Invalid code" });
+    }
+  };
 
   const handleBookNow = async () => {
     if (type === "double" && !partnerEmail.trim()) {
@@ -54,6 +91,10 @@ const BookingCheckOut = () => {
         type,
         months,
         partnerEmail: type === "double" ? partnerEmail : null,
+        referralCode: isCodeValid ? referralCode : null,
+        useRewards: useRewards // Send flag to backend
+      }, {
+        headers: { Authorization: `Bearer ${user.token}` }
       });
       window.location.href = data.url;
     } catch (error) {
@@ -82,10 +123,10 @@ const BookingCheckOut = () => {
               </span>
               <span className="text-gray-500 text-sm">{property.type || "Apartment"}</span>
             </div>
-            
+
             <h2 className="text-xl font-semibold text-gray-900 mb-2">{property.title}</h2>
             <p className="text-gray-600 text-sm mb-4">{property.address || "Premium location"}</p>
-            
+
             <div className="flex space-x-4 mb-6">
               <div className="flex items-center text-gray-600 text-sm">
                 <svg className="w-4 h-4 mr-1 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
@@ -101,7 +142,7 @@ const BookingCheckOut = () => {
                 {property.bathrooms || 1} Baths
               </div>
             </div>
-            
+
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-700 font-medium">Monthly Rent</span>
@@ -123,11 +164,10 @@ const BookingCheckOut = () => {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setType("single")}
-                  className={`p-3 border rounded-lg transition-all duration-200 ${
-                    type === "single" 
-                      ? "border-gray-900 bg-gray-900 text-white" 
-                      : "border-gray-300 text-gray-700 hover:border-gray-400"
-                  }`}
+                  className={`p-3 border rounded-lg transition-all duration-200 ${type === "single"
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-300 text-gray-700 hover:border-gray-400"
+                    }`}
                 >
                   <div className="text-center">
                     <div className="font-medium text-sm">Single Shared</div>
@@ -136,11 +176,10 @@ const BookingCheckOut = () => {
                 </button>
                 <button
                   onClick={() => setType("double")}
-                  className={`p-3 border rounded-lg transition-all duration-200 ${
-                    type === "double" 
-                      ? "border-gray-900 bg-gray-900 text-white" 
-                      : "border-gray-300 text-gray-700 hover:border-gray-400"
-                  }`}
+                  className={`p-3 border rounded-lg transition-all duration-200 ${type === "double"
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-300 text-gray-700 hover:border-gray-400"
+                    }`}
                 >
                   <div className="text-center">
                     <div className="font-medium text-sm">Double Shared</div>
@@ -172,11 +211,10 @@ const BookingCheckOut = () => {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setMonths(3)}
-                  className={`p-3 border rounded-lg transition-all duration-200 ${
-                    months === 3 
-                      ? "border-gray-900 bg-gray-900 text-white" 
-                      : "border-gray-300 text-gray-700 hover:border-gray-400"
-                  }`}
+                  className={`p-3 border rounded-lg transition-all duration-200 ${months === 3
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-300 text-gray-700 hover:border-gray-400"
+                    }`}
                 >
                   <div className="text-center">
                     <div className="font-medium text-sm">3 Months</div>
@@ -185,11 +223,10 @@ const BookingCheckOut = () => {
                 </button>
                 <button
                   onClick={() => setMonths(6)}
-                  className={`p-3 border rounded-lg transition-all duration-200 ${
-                    months === 6 
-                      ? "border-gray-900 bg-gray-900 text-white" 
-                      : "border-gray-300 text-gray-700 hover:border-gray-400"
-                  }`}
+                  className={`p-3 border rounded-lg transition-all duration-200 ${months === 6
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-300 text-gray-700 hover:border-gray-400"
+                    }`}
                 >
                   <div className="text-center">
                     <div className="font-medium text-sm">6 Months</div>
@@ -198,6 +235,58 @@ const BookingCheckOut = () => {
                 </button>
               </div>
             </div>
+
+            {/* Referral Code */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Referral Code</label>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  placeholder="Enter referral code"
+                  value={referralCode}
+                  onChange={(e) => {
+                    setReferralCode(e.target.value.toUpperCase());
+                    setIsCodeValid(false);
+                    setDiscount(0);
+                    setReferralMessage(null);
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-gray-400 focus:border-gray-400 transition-colors duration-200 text-sm uppercase"
+                />
+                <button
+                  onClick={handleApplyReferral}
+                  disabled={isCodeValid || !referralCode}
+                  className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCodeValid ? 'Applied' : 'Apply'}
+                </button>
+              </div>
+              {referralMessage && (
+                <p className={`text-xs mt-1 ${referralMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                  {referralMessage.text}
+                </p>
+              )}
+            </div>
+
+            {/* REWARDS SECTION */}
+            {userRewards > 0 && (
+              <div className="mb-6 bg-indigo-50 border border-indigo-100 p-4 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-indigo-900">Use Referral Rewards</p>
+                    <p className="text-xs text-indigo-700">Balance available: ₹{userRewards}</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={useRewards}
+                      onChange={() => setUseRewards(!useRewards)}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+              </div>
+            )}
 
             {/* Price Breakdown */}
             <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
@@ -217,10 +306,22 @@ const BookingCheckOut = () => {
                     <span className="font-medium">2 persons</span>
                   </div>
                 )}
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-700">
+                    <span className="font-medium">Referral Discount</span>
+                    <span className="font-bold">- ₹{discount}</span>
+                  </div>
+                )}
+                {rewardDiscount > 0 && (
+                  <div className="flex justify-between text-indigo-700">
+                    <span className="font-medium">Rewards Redeemed</span>
+                    <span className="font-bold">- ₹{rewardDiscount}</span>
+                  </div>
+                )}
                 <div className="border-t border-gray-300 pt-2 mt-2">
                   <div className="flex justify-between font-semibold">
                     <span className="text-gray-900">Total Amount</span>
-                    <span className="text-gray-900">₹{total}</span>
+                    <span className="text-gray-900">₹{finalTotal}</span>
                   </div>
                 </div>
               </div>
@@ -241,7 +342,7 @@ const BookingCheckOut = () => {
                   Processing Payment...
                 </div>
               ) : (
-                `Proceed to Pay ₹${total}`
+                `Proceed to Pay ₹${finalTotal}`
               )}
             </button>
 

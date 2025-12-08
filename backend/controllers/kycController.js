@@ -1,6 +1,7 @@
 const Kyc = require('../models/Kyc');
 const User = require('../models/User');
 const crypto = require('crypto');
+const { generateUniqueReferralCode } = require('../utils/referralUtils');
 
 const maskAadhaar = (a) => '**** **** ' + a.slice(-4);
 const hashAadhaar = (a) =>
@@ -8,7 +9,7 @@ const hashAadhaar = (a) =>
 
 exports.submitKyc = async (req, res) => {
   try {
-    const userId =  req.user._id || req.user.id;
+    const userId = req.user._id || req.user.id;
     console.log(userId);
     const { aadhaar } = req.body;
 
@@ -65,7 +66,15 @@ exports.reviewKyc = async (req, res) => {
     if (action === 'reject') kyc.rejectedReason = reason;
     await kyc.save();
 
-    await User.findByIdAndUpdate(kyc.user, { kycStatus: kyc.status });
+    const updateData = { kycStatus: kyc.status };
+
+    // Generate referral code on approval
+    if (action === 'approve') {
+      const code = await generateUniqueReferralCode();
+      updateData.referralCode = code;
+    }
+
+    await User.findByIdAndUpdate(kyc.user, updateData);
 
     res.json({ message: `KYC ${action}ed successfully` });
   } catch (err) {

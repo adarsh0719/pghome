@@ -61,29 +61,40 @@ const createPost = async (req, res) => {
 const getPosts = async (req, res) => {
   try {
     const posts = await Post.find()
-      .populate('author', 'name userType')   // no avatar here
+      .populate('author', 'name userType')
       .populate('comments.user', 'name')
       .sort({ createdAt: -1 });
 
-    const finalData = [];
+    // 1. Collect all unique author IDs
+    const authorIds = [...new Set(posts.map(p => p.author?._id).filter(Boolean))];
 
-    for (const p of posts) {
-      const author = p.author;
+    // 2. Fetch profiles in one batch
+    const profiles = await RoommateProfile.find(
+      { user: { $in: authorIds } },
+      { user: 1, images: 1 }
+    );
 
-      // Fetch roommate profile manually using author._id
-      const profile = await RoommateProfile.findOne(
-        { user: author._id },
-        { images: 1 }
-      );
+    // 3. Create a lookup map: userId -> avatarUrl
+    const avatarMap = {};
+    profiles.forEach(prof => {
+      if (prof.images && prof.images.length > 0) {
+        avatarMap[prof.user.toString()] = prof.images[0];
+      }
+    });
 
-      finalData.push({
+    // 4. Attach avatars to posts
+    const finalData = posts.map(p => {
+      const authorObj = p.author ? p.author.toObject() : {};
+      const authorIdStr = authorObj._id ? authorObj._id.toString() : null;
+
+      return {
         ...p.toObject(),
         author: {
-          ...author.toObject(),
-          avatar: profile?.images?.[0] || '/default-avatar.png'
+          ...authorObj,
+          avatar: (authorIdStr && avatarMap[authorIdStr]) || '/default-avatar.png'
         }
-      });
-    }
+      };
+    });
 
     res.json(finalData);
   } catch (err) {
