@@ -261,84 +261,106 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* PROMO CODE SECTION (Redesigned & Moved) */}
-{user?.referralCode && (
-  <div className="bg-[#1a1a1a] rounded-2xl shadow-xl overflow-hidden mb-8 relative border border-gray-800">
-    {/* Background Effects */}
-    <div className="absolute top-0 right-0 w-56 h-56 bg-indigo-600/20 rounded-full blur-3xl -mr-20 -mt-20"></div>
-    <div className="absolute bottom-0 left-0 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl -ml-10 -mb-10"></div>
+        {/* REFERRAL SECTION (Always Visible - Conditional State) */}
+        {user && (
+          <div className="bg-[#1a1a1a] rounded-2xl shadow-xl overflow-hidden mb-8 relative border border-gray-800">
+            {/* Background Effects */}
+            <div className="absolute top-0 right-0 w-56 h-56 bg-indigo-600/20 rounded-full blur-3xl -mr-16 -mt-16"></div>
+            <div className="absolute bottom-0 left-0 w-36 h-36 bg-amber-500/10 rounded-full blur-2xl -ml-8 -mb-8"></div>
 
-    <div className="relative z-10 p-7 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="relative z-10 p-7 flex flex-col md:flex-row items-center justify-between gap-6">
 
-      {/* Text Content */}
-      <div className="text-center md:text-left flex-1">
-        <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-          <span className="bg-amber-500/20 text-amber-500 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-amber-500/20">
-            Exclusive
-          </span>
-          <span className="text-gray-400 text-[11px] uppercase tracking-wide font-semibold">
-            For You
-          </span>
-        </div>
+              {/* Text Content */}
+              <div className="text-center md:text-left flex-1">
+                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                  <span className="bg-amber-500/20 text-amber-500 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-amber-500/20">
+                    Exclusive
+                  </span>
+                  <span className="text-gray-400 text-[11px] uppercase tracking-wide font-semibold">
+                    For You
+                  </span>
+                </div>
 
-        <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">
-          Share the Vibe,{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
-            Earn Rewards
-          </span>
-        </h3>
+                <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                  {user.referralCode ? (
+                    <>
+                      Share the Vibe,{" "}
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+                        Earn Rewards
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      Unlock Your{" "}
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+                        Referral Code
+                      </span>
+                    </>
+                  )}
+                </h3>
 
-        <p className="text-gray-400 text-[15px] leading-relaxed max-w-lg">
-          Invite friends. They save <span className="text-white font-bold">₹500</span>, you earn credits.
-        </p>
-      </div>
+                <p className="text-gray-400 text-[15px] leading-relaxed max-w-lg">
+                  {user.referralCode
+                    ? "Invite friends. They save ₹500, you earn credits."
+                    : "Complete your KYC verification to start earning rewards. Friends save ₹500, you earn credits."}
+                </p>
+              </div>
 
-      {/* Code Card */}
-      <div className="flex flex-col items-center">
-        <div className="group relative">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-amber-500 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-          
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(user.referralCode);
-              toast.success("Referral code copied!", {
-                position: "bottom-center",
-                theme: "dark",
-              });
-            }}
-            className="relative bg-[#252525] ring-1 ring-white/10 rounded-xl px-6 py-4 flex items-center gap-4 hover:bg-[#2a2a2a] transition-all transform hover:scale-[1.03] active:scale-[0.98]"
-          >
-            <div className="text-left">
-              <p className="text-[11px] text-gray-500 uppercase tracking-widest font-bold mb-1">
-                Your Code
-              </p>
-              <span className="text-3xl font-mono font-bold text-white tracking-widest">
-                {user.referralCode}
-              </span>
+              {/* Action Card */}
+              <div className="flex flex-col items-center">
+                <div className="group relative">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-amber-500 rounded-xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+
+                  {user.referralCode ? (
+                    // SHOW CODE
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(user.referralCode);
+                        toast.success("Referral code copied!", {
+                          position: "bottom-center",
+                          theme: "dark",
+                        });
+                      }}
+                      className="relative bg-[#252525] ring-1 ring-white/10 rounded-xl px-6 py-4 flex items-center gap-4 hover:bg-[#2a2a2a] transition-all transform hover:scale-[1.03] active:scale-[0.98]"
+                    >
+                      <div className="text-left">
+                        <p className="text-[11px] text-gray-500 uppercase tracking-widest font-bold mb-1">
+                          Your Code
+                        </p>
+                        <span className="text-3xl font-mono font-bold text-white tracking-widest">
+                          {user.referralCode}
+                        </span>
+                      </div>
+                      <div className="h-10 w-[1px] bg-gray-700 mx-2"></div>
+                      <svg className="w-6 h-6 text-indigo-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  ) : (
+                    // COMPLETE KYC BUTTON
+                    <button
+                      onClick={() => navigate("/kyc-verify")}
+                      className="relative bg-[#252525] ring-1 ring-white/10 rounded-xl px-8 py-4 flex items-center gap-3 hover:bg-[#2a2a2a] transition-all transform hover:scale-[1.03] active:scale-[0.98]"
+                    >
+                      <div className="text-left">
+                        <p className="text-[11px] text-gray-400 uppercase tracking-widest font-bold mb-0.5">
+                          Action Required
+                        </p>
+                        <span className="text-lg font-bold text-white tracking-wide">
+                          Complete KYC
+                        </span>
+                      </div>
+                      <svg className="w-5 h-5 text-indigo-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+
             </div>
-
-            <div className="h-10 w-[1px] bg-gray-700 mx-2"></div>
-
-            <svg
-              className="w-6 h-6 text-indigo-400 group-hover:text-white transition-colors"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-)}
+          </div>
+        )}
       </div>
     </div>
   );
