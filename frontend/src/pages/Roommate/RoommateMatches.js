@@ -367,10 +367,7 @@ const RoommateMatches = () => {
   // -------------------------------------------
   if (!user) return <p className="text-center mt-10">Login to see roommate matches</p>;
   if (profileCreated === null) return <p className="text-center mt-10">Checking profile...</p>;
-if (!profileCreated) return <RoommateProfile onProfileCreated={() => {
-    setProfileCreated(true);
-    fetchData();
-  }} />;
+  if (!profileCreated) return <RoommateProfile onProfileCreated={() => setProfileCreated(true)} />;
   return (
     <div className="min-h-screen  flex flex-col">
       <div className="flex flex-col lg:flex-row w-full flex-grow pt-24">
@@ -447,10 +444,10 @@ if (!profileCreated) return <RoommateProfile onProfileCreated={() => {
 
                           {/* === AVAILABLE ROOMS BADGE (Fixed Position) === */}
                           {currentMatch.profile.availableRooms > 0 && (
-                            <div className="absolute top-4 right-4 bg-green-600/90 backdrop-blur-md px-4 py-1.5 rounded-lg shadow-md flex items-center gap-2 border border-white/20">
-                              <span className="text-white text-sm font-medium">
-                                {currentMatch.profile.availableRooms} Room
-                                {currentMatch.profile.availableRooms > 1 ? "s" : ""} Available
+                            <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 border border-white/20">
+                              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                              <span className="text-white text-xs font-semibold tracking-wide">
+                                {currentMatch.profile.availableRooms} Room{currentMatch.profile.availableRooms > 1 ? "s" : ""}
                               </span>
                             </div>
                           )}
@@ -597,13 +594,11 @@ if (!profileCreated) return <RoommateProfile onProfileCreated={() => {
                       </div>
 
                       {/* === AVAILABLE ROOMS BADGE === */}
-                      {/* AVAILABLE ROOMS BADGE */}
                       {currentMatch.profile.availableRooms > 0 && (
-                        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-xl border border-green-500/30 px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
-                          <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></div>
-                          <span className="text-green-700 font-semibold text-sm tracking-wide">
-                            {currentMatch.profile.availableRooms} Room
-                            {currentMatch.profile.availableRooms > 1 ? "s" : ""} Available
+                        <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full shadow-sm flex items-center gap-2 border border-white/20">
+                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                          <span className="text-white text-sm font-semibold tracking-wide">
+                            {currentMatch.profile.availableRooms} Room{currentMatch.profile.availableRooms > 1 ? "s" : ""} Available
                           </span>
                         </div>
                       )}

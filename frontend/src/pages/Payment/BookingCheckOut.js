@@ -1,5 +1,5 @@
 // src/pages/BookingCheckOut.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -15,6 +15,30 @@ const BookingCheckOut = () => {
   const [months, setMonths] = useState(3);
   const [partnerEmail, setPartnerEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [existingBooking, setExistingBooking] = useState(null);
+
+  useEffect(() => {
+    const fetchExistingBooking = async () => {
+      try {
+        const { data } = await axios.get("/api/bookings/my-bookings", {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+        // Find booking for this property
+        // Find ACTIVE booking for this property (pending or approved but not paid)
+        // We exclude 'paid' and 'rejected' so users can re-book if they want
+        const booking = data.find(b =>
+          b.property._id === property._id &&
+          b.status !== 'cancelled' &&
+          b.status !== 'paid' &&
+          b.approvalStatus !== 'rejected'
+        );
+        if (booking) setExistingBooking(booking);
+      } catch (err) {
+        console.error("Failed to check existing bookings");
+      }
+    };
+    if (user && property) fetchExistingBooking();
+  }, [user, property]);
 
   // Referral State
   const [referralCode, setReferralCode] = useState("");
@@ -78,6 +102,21 @@ const BookingCheckOut = () => {
     }
   };
 
+  const handlePayment = async () => {
+    if (!existingBooking) return;
+    setLoading(true);
+    try {
+      const { data } = await axios.post("/api/bookings/create-session", { bookingId: existingBooking._id }, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      if (data.url) window.location.href = data.url;
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Payment init failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBookNow = async () => {
     if (type === "double" && !partnerEmail.trim()) {
       toast.error("Please enter your roommate's email address.");
@@ -86,20 +125,25 @@ const BookingCheckOut = () => {
 
     try {
       setLoading(true);
-      const { data } = await axios.post("/api/bookings/create-session", {
+      // Use new request-booking endpoint
+      const { data } = await axios.post("/api/bookings/request-booking", {
         propertyId: property._id,
         type,
         months,
         partnerEmail: type === "double" ? partnerEmail : null,
         referralCode: isCodeValid ? referralCode : null,
-        useRewards: useRewards // Send flag to backend
+        useRewards: useRewards
       }, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
-      window.location.href = data.url;
+
+      // No Stripe URL yet - Redirect to Dashboard
+      toast.success("Booking Request Sent! Wait for owner approval.");
+      navigate("/dashboard");
+
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.message || "Failed to start booking process");
+      toast.error(error.response?.data?.message || "Booking failed");
     } finally {
       setLoading(false);
     }
@@ -117,30 +161,38 @@ const BookingCheckOut = () => {
         <div className="grid md:grid-cols-2 gap-6">
           {/* Property Overview Card */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            {/* Property Image */}
+            <div className="h-48 w-full mb-4 rounded-lg overflow-hidden">
+              <img
+                src={property.images?.[0]?.url || '/default-property.jpg'}
+                alt={property.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
+
             <div className="flex items-center justify-between mb-4">
-              <span className="bg-green-50 text-green-700 text-xs font-medium px-2 py-1 rounded">
-                Available
+              <span className={`text-xs font-medium px-2 py-1 rounded ${property.availability === 'available' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                }`}>
+                {property.availability?.toUpperCase() || "AVAILABLE"}
               </span>
-              <span className="text-gray-500 text-sm">{property.type || "Apartment"}</span>
+              <span className="text-gray-500 text-sm capitalize">{property.type || "Apartment"}</span>
             </div>
 
             <h2 className="text-xl font-semibold text-gray-900 mb-2">{property.title}</h2>
-            <p className="text-gray-600 text-sm mb-4">{property.address || "Premium location"}</p>
+            <p className="text-gray-600 text-sm mb-4">
+              {property.location?.address || property.address || "Location unavailable"}
+            </p>
 
-            <div className="flex space-x-4 mb-6">
-              <div className="flex items-center text-gray-600 text-sm">
-                <svg className="w-4 h-4 mr-1 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                </svg>
-                {property.bedrooms || 1} Beds
-              </div>
-              <div className="flex items-center text-gray-600 text-sm">
-                <svg className="w-4 h-4 mr-1 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                {property.bathrooms || 1} Baths
-              </div>
+            {/* Amenities Preview */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {property.amenities?.slice(0, 3).map((amenity, idx) => (
+                <span key={idx} className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
+                  {amenity}
+                </span>
+              ))}
+              {property.amenities?.length > 3 && (
+                <span className="text-gray-500 text-xs self-center">+{property.amenities.length - 3} more</span>
+              )}
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4">
@@ -318,36 +370,74 @@ const BookingCheckOut = () => {
                     <span className="font-bold">- ₹{rewardDiscount}</span>
                   </div>
                 )}
-                <div className="border-t border-gray-300 pt-2 mt-2">
-                  <div className="flex justify-between font-semibold">
-                    <span className="text-gray-900">Total Amount</span>
-                    <span className="text-gray-900">₹{finalTotal}</span>
-                  </div>
+                <div className="flex items-center justify-between font-bold text-gray-900 border-t border-gray-200 pt-4 mt-4">
+                  <span>Total Amount</span>
+                  <span>₹{finalTotal}</span>
                 </div>
               </div>
+
+              {/* Vacancy Warning */}
+              {property.vacancies && (
+                <div className="mt-4">
+                  {property.vacancies[type] === 0 ? (
+                    <div className="bg-red-100 text-red-700 p-3 rounded-lg text-center font-bold">
+                      SOLD OUT
+                    </div>
+                  ) : property.vacancies[type] < 3 ? (
+                    <div className="text-orange-600 text-sm font-medium text-center">
+                      Hurry! Only {property.vacancies[type]} {type} spots left!
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </div>
 
-            {/* Action Button */}
-            <button
-              onClick={handleBookNow}
-              disabled={loading}
-              className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Processing Payment...
-                </div>
+            {/* ACTION BUTTON */}          {/* Action Button */}
+            {/* Action Button Logic */}
+            {existingBooking ? (
+              existingBooking.status === 'paid' ? (
+                <button disabled className="w-full bg-green-600 text-white py-4 rounded-xl text-lg font-bold shadow-lg opacity-80 cursor-not-allowed">
+                  Booking Confirmed
+                </button>
+              ) : existingBooking.approvalStatus === 'approved' ? (
+                <button
+                  onClick={handlePayment}
+                  disabled={loading}
+                  className="w-full bg-[#d16729] text-white py-4 rounded-xl text-lg font-bold hover:bg-[#b5571f] transition transform hover:scale-[1.02] shadow-lg disabled:opacity-50"
+                >
+                  {loading ? 'Processing...' : `Pay Now (₹${existingBooking.totalAmount})`}
+                </button>
+              ) : existingBooking.approvalStatus === 'rejected' ? (
+                <button disabled className="w-full bg-red-600 text-white py-4 rounded-xl text-lg font-bold shadow-lg opacity-80 cursor-not-allowed">
+                  Request Rejected
+                </button>
               ) : (
-                `Proceed to Pay ₹${finalTotal}`
-              )}
-            </button>
+                <button disabled className="w-full bg-yellow-500 text-white py-4 rounded-xl text-lg font-bold shadow-lg opacity-80 cursor-not-allowed">
+                  Request Pending Approval
+                </button>
+              )
+            ) : (
+              <button
+                onClick={handleBookNow}
+                disabled={loading || (property.vacancies && property.vacancies[type] === 0)}
+                className={`w-full py-4 rounded-xl text-lg font-bold shadow-lg flex justify-center items-center transition transform
+                  ${loading || (property.vacancies && property.vacancies[type] === 0)
+                    ? 'bg-gray-400 cursor-not-allowed opacity-70'
+                    : 'bg-[#d16729] hover:bg-[#b5571f] hover:scale-[1.02] text-white'}`}
+              >
+                {loading ? (
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  property.vacancies && property.vacancies[type] === 0
+                    ? "SOLD OUT"
+                    : `Send Booking Request (Pay ₹${finalTotal})`
+                )}
+              </button>
+            )}
 
-            <p className="text-center text-xs text-gray-500 mt-4">
-              Secure payment processing. Your booking is protected.
+            <p className="text-center text-gray-500 text-sm mt-4">
+              Your booking request will be sent to the owner for approval. <br />
+              You will be notified when you can proceed with payment.
             </p>
           </div>
         </div>

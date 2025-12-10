@@ -26,6 +26,10 @@ const propertySchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+  vacancies: {
+    single: { type: Number, default: 0 },
+    double: { type: Number, default: 0 }
+  },
   securityDeposit: {
     type: Number,
     default: 0,
@@ -91,9 +95,9 @@ const propertySchema = new mongoose.Schema({
     default: false
   },
   rating: {
-  average: { type: Number, default: 0 },
-  count: { type: Number, default: 0 }
-}
+    average: { type: Number, default: 0 },
+    count: { type: Number, default: 0 }
+  }
 
 }, {
   timestamps: true

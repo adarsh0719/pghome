@@ -40,8 +40,8 @@ router.post('/validate-referral', protect, async (req, res) => {
 });
 
 
-//  Create Checkout Session
-router.post('/create-session', protect, async (req, res) => {
+// --- NEW: Request Booking (No Payment Yet) ---
+router.post('/request-booking', protect, async (req, res) => {
   try {
     const { propertyId, type, months, partnerEmail, referralCode, useRewards } = req.body;
 
@@ -51,51 +51,82 @@ router.post('/create-session', protect, async (req, res) => {
     const basePrice = property.rent * months;
     let totalAmount = type === 'double' ? basePrice * 2 : basePrice;
 
-    // --- REFERRAL DISCOUNT (Entering a code) ---
+    // --- REFERRAL DISCOUNT ---
     let discountAmount = 0;
     let validReferralCode = null;
 
     if (referralCode) {
       const referrer = await User.findOne({ referralCode: referralCode.toUpperCase() });
       if (referrer && referrer._id.toString() !== req.user._id.toString()) {
-        discountAmount = 500; // Flat discount
+        discountAmount = 500;
         validReferralCode = referralCode.toUpperCase();
         totalAmount = Math.max(0, totalAmount - discountAmount);
       }
     }
 
-    // --- REWARDS REDEMPTION (Using own points) ---
+    // --- REWARDS REDEMPTION ---
     let rewardsUsed = 0;
     if (useRewards && req.user.referralRewards > 0) {
-      // Can redeem up to the remaining total amount
       rewardsUsed = Math.min(totalAmount, req.user.referralRewards);
       totalAmount = Math.max(0, totalAmount - rewardsUsed);
     }
 
-    // Prepare booking users
     const bookedBy = [req.user._id];
     if (type === 'double' && partnerEmail) {
       const partner = await User.findOne({ email: partnerEmail });
-      if (!partner) {
-        return res.status(400).json({ message: 'Partner email not found' });
-      }
+      if (!partner) return res.status(400).json({ message: 'Partner email not found' });
       bookedBy.push(partner._id);
     }
 
-    // Create pending booking
     const booking = await Booking.create({
       property: property._id,
       owner: property.owner._id,
       bookedBy,
       type,
       months,
-      totalAmount, // Final amount to pay
+      totalAmount,
       status: 'pending',
+      approvalStatus: 'pending', // Waiting for owner
       referralCodeApplied: validReferralCode,
       discountAmount,
       rewardsUsed,
       isReferralRewardClaimed: false
     });
+
+    res.json({ message: 'Booking request sent to owner!', bookingId: booking._id });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Booking request failed' });
+  }
+});
+
+// --- UPDATED: Create Checkout Session (Handles New & Approved Bookings) ---
+router.post('/create-session', protect, async (req, res) => {
+  try {
+    const { bookingId } = req.body; // Check if paying for existing booking
+
+    let booking;
+    let property;
+    let totalAmount;
+    let type;
+    let months;
+
+    if (bookingId) {
+      // PAYING FOR APPROVED BOOKING
+      booking = await Booking.findById(bookingId).populate('property');
+      if (!booking) return res.status(404).json({ message: 'Booking not found' });
+      if (booking.approvalStatus !== 'approved') return res.status(400).json({ message: 'Booking not approved yet' });
+
+      property = booking.property;
+      totalAmount = booking.totalAmount;
+      type = booking.type;
+      months = booking.months;
+
+    } else {
+      // LEGACY / DIRECT BOOKING (If needed, or error out)
+      return res.status(400).json({ message: 'Use request-booking first' });
+    }
 
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -108,7 +139,7 @@ router.post('/create-session', protect, async (req, res) => {
             product_data: {
               name: `${property.title} (${type} for ${months} months)`
             },
-            unit_amount: Math.round(totalAmount * 100), // Stripe uses paisa
+            unit_amount: Math.round(totalAmount * 100),
           },
           quantity: 1,
         },
@@ -129,7 +160,27 @@ router.post('/create-session', protect, async (req, res) => {
 });
 
 
-//  Verify Payment and Generate Coupon (and Handle Referral Rewards)
+// Owner Actions: Approve/Reject
+router.put('/:id/status', protect, async (req, res) => {
+  try {
+    const { status } = req.body; // 'approved' or 'rejected'
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.owner.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    booking.approvalStatus = status;
+    await booking.save();
+    res.json({ message: `Booking ${status}`, booking });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update status' });
+  }
+});
+
+
+// Verify Payment and Generate Coupon (and Handle Referral Rewards)
 router.get('/verify-payment', async (req, res) => {
   try {
     const session = await stripe.checkout.sessions.retrieve(req.query.session_id);
@@ -143,11 +194,29 @@ router.get('/verify-payment', async (req, res) => {
       booking.status = 'paid';
       booking.coupon = coupon;
 
+      // Update vacancies
+      // We check vacancy count to prevent going below 0 (though payment should ideally be blocked earlier if full)
+      const vacancyType = booking.type === 'pg' ? null : booking.type; // 'single' or 'double' usually stored in type for rooms? 
+      // Wait, booking.type is 'single' or 'double' based on "Request Booking" payload?
+      // Let's check request-booking payload: 'type' comes from body. 
+      // In Property model enum is 'pg', 'flat', 'room', 'hostel'.
+      // But Booking model 'type' seems to be the room type (single/double) selected by user?
+      // Checking BookingCheckOut.js: User selects 'single' or 'double'.
+      // So booking.type is 'single' or 'double'.
+      if (booking.property && booking.property.vacancies) {
+        if (booking.type === 'single' && booking.property.vacancies.single > 0) {
+          booking.property.vacancies.single -= 1;
+        } else if (booking.type === 'double' && booking.property.vacancies.double > 0) {
+          booking.property.vacancies.double -= 1;
+        }
+        await booking.property.save();
+      }
+
       // 1. Credit the REFERRER (if a code was used)
       if (booking.referralCodeApplied && !booking.isReferralRewardClaimed) {
         const referrer = await User.findOne({ referralCode: booking.referralCodeApplied });
         if (referrer) {
-          referrer.referralRewards = (referrer.referralRewards || 0) + 300;
+          referrer.referralRewards = (referrer.referralRewards || 0) + 500;
           await referrer.save();
           booking.isReferralRewardClaimed = true;
           console.log(`Referral reward credited to ${referrer.email}`);
@@ -183,7 +252,7 @@ router.get('/verify-payment', async (req, res) => {
 router.get('/owner/:ownerId', async (req, res) => {
   const bookings = await Booking.find({ owner: req.params.ownerId })
     .populate('property')
-    .populate('bookedBy', 'name email');
+    .populate('bookedBy', 'name email kycStatus kycDocument'); // Added KYC fields
   res.json(bookings);
 });
 
@@ -201,5 +270,18 @@ router.get('/my-coupon/:userId', async (req, res) => {
   }
 });
 
+
+// Get Logged In User's Bookings
+router.get('/my-bookings', protect, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ bookedBy: req.user._id })
+      .populate('property')
+      .sort({ createdAt: -1 });
+    res.json(bookings);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch bookings' });
+  }
+});
 
 module.exports = router;

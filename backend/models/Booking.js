@@ -15,7 +15,10 @@ const bookingSchema = new mongoose.Schema({
   referralCodeApplied: { type: String },
   discountAmount: { type: Number, default: 0 }, // Discount from engaging a code
   rewardsUsed: { type: Number, default: 0 }, // Discount from USING own rewards
-  isReferralRewardClaimed: { type: Boolean, default: false }
+  isReferralRewardClaimed: { type: Boolean, default: false },
+
+  // Booking Request Status
+  approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Booking', bookingSchema);

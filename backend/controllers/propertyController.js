@@ -30,10 +30,10 @@ exports.getProperties = async (req, res) => {
       query.amenities = { $all: amenitiesArray };
     }
     // Filter by minimum rating
-if (req.query.minRating) {
-  const min = Number(req.query.minRating);
-  query["rating.average"] = { $gte: min };
-}
+    if (req.query.minRating) {
+      const min = Number(req.query.minRating);
+      query["rating.average"] = { $gte: min };
+    }
 
 
     const properties = await Property.find(query).populate('owner', 'name email phone');
@@ -101,11 +101,11 @@ exports.createProperty = async (req, res) => {
     await property.save();
 
     // Also add the property to the owner's properties array
-await User.findByIdAndUpdate(
-  req.user._id, // FIX: Use _id instead of id
-  { $addToSet: { properties: property._id } },
-  { new: true }
-);
+    await User.findByIdAndUpdate(
+      req.user._id, // FIX: Use _id instead of id
+      { $addToSet: { properties: property._id } },
+      { new: true }
+    );
 
     res.status(201).json(property);
   } catch (error) {
@@ -140,11 +140,18 @@ exports.updateProperty = async (req, res) => {
 
     // ----- LOCATION (fixed) -----
     const location = {
-      address:  req.body.location?.address  || req.body["location[address]"]  || "",
-      city:     req.body.location?.city     || req.body["location[city]"]     || "",
-      state:    req.body.location?.state    || req.body["location[state]"]    || "",
-      pincode:  req.body.location?.pincode  || req.body["location[pincode]"]  || "",
+      address: req.body.location?.address || req.body["location[address]"] || "",
+      city: req.body.location?.city || req.body["location[city]"] || "",
+      state: req.body.location?.state || req.body["location[state]"] || "",
+      pincode: req.body.location?.pincode || req.body["location[pincode]"] || "",
       landmark: req.body.location?.landmark || req.body["location[landmark]"] || "",
+    };
+
+    // ----- VACANCIES (fixed) -----
+    // Check if vacancies are sent as nested object or flattened keys (FormData)
+    const vacancies = {
+      single: req.body.vacancies?.single || req.body["vacancies[single]"] || 0,
+      double: req.body.vacancies?.double || req.body["vacancies[double]"] || 0
     };
 
     // ----- Build update object -----
@@ -159,7 +166,11 @@ exports.updateProperty = async (req, res) => {
       amenities,
       rules,
       images,
+      amenities,
+      rules,
+      images,
       location,
+      vacancies
     };
 
     const updated = await Property.findByIdAndUpdate(
@@ -199,6 +210,17 @@ exports.deleteProperty = async (req, res) => {
     await User.findByIdAndUpdate(req.user.id, { $pull: { properties: property._id } });
 
     res.json({ message: 'Property removed' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Get properties by user ID
+exports.getPropertiesByUser = async (req, res) => {
+  try {
+    const properties = await Property.find({ owner: req.params.id }).sort({ createdAt: -1 });
+    res.json(properties);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

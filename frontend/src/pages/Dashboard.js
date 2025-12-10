@@ -259,7 +259,12 @@ const Dashboard = () => {
               ? `You're visible in roommate finder with ${myProfile.availableRooms} room(s)`
               : "Let people know you have space!"}
           </p>
+
         </div>
+
+        {/* --- MY BOOKINGS SECTION (For All Users) --- */}
+        <MyBookingsSection user={user} />
+
 
         {/* REFERRAL SECTION (Always Visible - Conditional State) */}
         {user && (
@@ -367,3 +372,90 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
+const MyBookingsSection = ({ user }) => {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const { data } = await axios.get("/api/bookings/my-bookings", {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+        setBookings(data);
+      } catch (err) {
+        console.error("Failed to fetch bookings");
+      }
+    };
+    if (user) fetchBookings();
+  }, [user]);
+
+  const handlePayment = async (bookingId) => {
+    setLoading(true);
+    try {
+      const { data } = await axios.post("/api/bookings/create-session", { bookingId }, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      if (data.url) window.location.href = data.url;
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Payment init failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (bookings.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+      <h3 className="text-xl font-semibold mb-4">My Bookings & Requests</h3>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {bookings.map(book => (
+          <div key={book._id} className="border border-gray-100 rounded-xl p-4 bg-gray-50 flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-start mb-2">
+                <h4 className="font-bold text-gray-800">{book.property?.title}</h4>
+                <span className={`text-xs px-2 py-1 rounded-full font-bold uppercase ${book.approvalStatus === 'approved' ? 'bg-green-100 text-green-700' :
+                  book.approvalStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+                    'bg-yellow-100 text-yellow-700'
+                  }`}>
+                  {book.approvalStatus === 'pending' ? 'Waiting Approval' : book.approvalStatus}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600 mb-1">Total: ₹{book.totalAmount}</p>
+              <p className="text-xs text-gray-400">Date: {new Date(book.createdAt).toLocaleDateString()}</p>
+
+              {book.referralCodeApplied && <p className="text-xs text-green-600 mt-1">Referral Applied: {book.referralCodeApplied}</p>}
+            </div>
+
+            <div className="mt-4">
+              {book.status === 'paid' ? (
+                <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm font-bold text-center border border-green-200">
+                  Booking Confirmed
+                </div>
+              ) : book.approvalStatus === 'approved' ? (
+                <button
+                  onClick={() => handlePayment(book._id)}
+                  disabled={loading}
+                  className="w-full bg-[#d16729] text-white py-2 rounded-lg font-bold hover:bg-[#b5571f] transition disabled:opacity-50"
+                >
+                  {loading ? 'Processing...' : 'Pay Now'}
+                </button>
+              ) : book.approvalStatus === 'rejected' ? (
+                <div className="bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm text-center border border-red-200">
+                  Request Rejected
+                </div>
+              ) : (
+                <div className="text-center text-sm text-gray-500 italic">
+                  Waiting for owner to approve...
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};

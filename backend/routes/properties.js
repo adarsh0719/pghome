@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { 
-  getProperties, 
-  getProperty, 
-  createProperty, 
-  updateProperty, 
-  deleteProperty 
+const {
+  getProperties,
+  getProperty,
+  createProperty,
+  updateProperty,
+  deleteProperty,
+  getPropertiesByUser
 } = require('../controllers/propertyController');
 const { protect } = require('../middleware/auth');
 const { uploadMultiple } = require('../middleware/upload');
@@ -22,12 +23,14 @@ router
   .put(protect, uploadMultiple, updateProperty)
   .delete(protect, deleteProperty);
 
+router.route('/user/:id').get(getPropertiesByUser);
+
 
 // Delete property images - FIX: Remove require inside route
 router.delete('/:id/images', protect, async (req, res) => {
   try {
     const property = await Property.findById(req.params.id); // Use imported Property
-    
+
     if (!property) {
       return res.status(404).json({ message: 'Property not found' });
     }

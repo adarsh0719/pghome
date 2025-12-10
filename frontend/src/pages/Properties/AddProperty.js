@@ -25,7 +25,11 @@ const AddProperty = () => {
     amenities: [],
     rules: [],
     liveViewAvailable: false,
-    videoUrl: ''
+    videoUrl: '',
+    vacancies: {
+      single: 0,
+      double: 0
+    }
   });
   const [images, setImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -36,7 +40,7 @@ const AddProperty = () => {
   // Handle image selection
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
-    
+
     // Validate file types and size
     const validFiles = files.filter(file => {
       if (!file.type.startsWith('image/')) {
@@ -71,7 +75,7 @@ const AddProperty = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     if (name.startsWith('location.')) {
       const locationField = name.split('.')[1];
       setFormData(prev => ({
@@ -79,6 +83,15 @@ const AddProperty = () => {
         location: {
           ...prev.location,
           [locationField]: value
+        }
+      }));
+    } else if (name.startsWith('vacancies.')) {
+      const vacancyType = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        vacancies: {
+          ...prev.vacancies,
+          [vacancyType]: parseInt(value) || 0
         }
       }));
     } else {
@@ -114,7 +127,7 @@ const AddProperty = () => {
 
     try {
       const submitData = new FormData();
-      
+
       // Append form data
       submitData.append('title', formData.title);
       submitData.append('description', formData.description);
@@ -130,6 +143,8 @@ const AddProperty = () => {
       submitData.append('rules', JSON.stringify(formData.rules));
       submitData.append('liveViewAvailable', formData.liveViewAvailable);
       submitData.append('videoUrl', formData.videoUrl);
+      submitData.append('vacancies[single]', formData.vacancies.single);
+      submitData.append('vacancies[double]', formData.vacancies.double);
 
       // Append images
       images.forEach(image => {
@@ -360,10 +375,42 @@ const AddProperty = () => {
               </div>
             </div>
 
+            {/* Vacancies */}
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Single Room Vacancies
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  name="vacancies.single"
+                  value={formData.vacancies.single}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Double Room Vacancies
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  name="vacancies.double"
+                  value={formData.vacancies.double}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
             {/* Location */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Location Details</h3>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Full Address *

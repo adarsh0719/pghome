@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link,useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -39,7 +39,7 @@ const PropertyDetail = () => {
       toast.info('Please login to contact the owner');
       return;
     }
-    
+
     if (user?.subscription?.active && new Date(user.subscription.expiresAt) > new Date()) {
       setShowOwnerDetails(true);
     } else {
@@ -49,22 +49,22 @@ const PropertyDetail = () => {
 
 
 
-  
 
-    const handleBooking = async () => {
+
+  const handleBooking = async () => {
     if (!user) {
       toast.info('Please login to book a visit');
       return;
     }
-     if (user._id === property.owner?._id) {
-     toast.info("You are the owner of this property.");
-     return;
+    if (user._id === property.owner?._id) {
+      toast.info("You are the owner of this property.");
+      return;
     }
     navigate('/booking-checkout', { state: { property } });
   };
 
 
-   const handleDelete = async () => {
+  const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this property?')) return;
 
     try {
@@ -102,7 +102,7 @@ const PropertyDetail = () => {
   }
 
 
-  
+
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 pt-32">
@@ -129,24 +129,23 @@ const PropertyDetail = () => {
                 className="w-full h-full object-cover"
               />
             </div>
-            
+
             {property.images.length > 1 && (
               <div className="absolute bottom-4 left-4 right-4 flex space-x-2 overflow-x-auto">
                 {property.images.map((imageObj, index) => (
-            <button
-              key={index}
-              onClick={() => setActiveImage(index)}
-              className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 ${
-              activeImage === index ? 'border-indigo-600' : 'border-gray-300'
-               }`}
-             >
-            <img
-             src={imageObj.url}  
-             alt={`${property.title} ${index + 1}`}
-             className="w-full h-full object-cover"
-             />
-            </button>
-             ))}
+                  <button
+                    key={index}
+                    onClick={() => setActiveImage(index)}
+                    className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 ${activeImage === index ? 'border-indigo-600' : 'border-gray-300'
+                      }`}
+                  >
+                    <img
+                      src={imageObj.url}
+                      alt={`${property.title} ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
 
               </div>
             )}
@@ -240,37 +239,66 @@ const PropertyDetail = () => {
                     <p className="text-gray-600">per month</p>
                   </div>
 
+                  {/* Vacancy Info */}
+                  <div className="mb-6 space-y-2">
+                    {property.vacancies ? (
+                      <>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">Single Vacancies:</span>
+                          <span className={`font-bold ${property.vacancies.single > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {property.vacancies.single > 0 ? `${property.vacancies.single} left` : 'Sold Out'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">Double Vacancies:</span>
+                          <span className={`font-bold ${property.vacancies.double > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {property.vacancies.double > 0 ? `${property.vacancies.double} left` : 'Sold Out'}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-gray-400 text-center">Vacancy info unavailable</p>
+                    )}
+                  </div>
+
                   <div className="space-y-4">
-                   {user ? (
-  <>
-    <button
-      onClick={handleContactOwner}
-      className="w-full bg-[#c17041] text-white py-3 rounded-lg font-semibold transition"
-    >
-      Contact Owner
-    </button>
-    
-    {property.liveViewAvailable && (
-      <button
-        onClick={() => setLiveTourActive(true)}
-        className="w-full bg-gray-500 text-white py-3 rounded-lg font-semibold hover:black transition"
-      >
-        Live Video Tour
-      </button>
-    )}
-    <button className="w-full border border-[#c17041] text-[#c17041] py-3 rounded-lg font-semibold hover:bg-white transition"
-     onClick={handleBooking}>
-      Book Now!
-    </button>
-  </>
-) : (
-  <Link
-    to="/login"
-    className="block w-full bg-[#d16729] text-white py-3 rounded-lg font-semibold hover:bg-black transition text-center"
-  >
-    Login to Contact
-  </Link>
-)}
+                    {user ? (
+                      <>
+                        <button
+                          onClick={handleContactOwner}
+                          className="w-full bg-[#c17041] text-white py-3 rounded-lg font-semibold transition"
+                        >
+                          Contact Owner
+                        </button>
+
+                        {property.liveViewAvailable && (
+                          <button
+                            onClick={() => setLiveTourActive(true)}
+                            className="w-full bg-gray-500 text-white py-3 rounded-lg font-semibold hover:black transition"
+                          >
+                            Live Video Tour
+                          </button>
+                        )}
+                        <button className={`w-full border py-3 rounded-lg font-semibold transition
+       ${property.vacancies && (property.vacancies.single === 0 && property.vacancies.double === 0)
+                            ? 'bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'border-[#c17041] text-[#c17041] hover:bg-white'}`}
+                          onClick={handleBooking}
+                          disabled={property.vacancies && property.vacancies.single === 0 && property.vacancies.double === 0}
+                        >
+                          {property.vacancies && property.vacancies.single === 0 && property.vacancies.double === 0
+                            ? "Sold Out"
+                            : "Book Now!"}
+                        </button>
+                      </>
+                    ) : (
+                      <Link
+                        to="/login"
+                        className="block w-full bg-[#d16729] text-white py-3 rounded-lg font-semibold hover:bg-black transition text-center"
+                      >
+                        Login to Contact
+                      </Link>
+                    )}
 
 
                   </div>
@@ -284,11 +312,10 @@ const PropertyDetail = () => {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Status:</span>
                       <span
-                        className={`font-semibold ${
-                          property.availability === 'available'
-                            ? 'text-green-600'
-                            : 'text-red-600'
-                        }`}
+                        className={`font-semibold ${property.availability === 'available'
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                          }`}
                       >
                         {property.availability?.charAt(0).toUpperCase() +
                           property.availability?.slice(1)}
@@ -305,27 +332,27 @@ const PropertyDetail = () => {
                 </div>
               </div>
             </div>
-{user && property?.owner?._id === user._id && (
-  <div className="flex justify-start mt-4 gap-3">
-    <button
-      onClick={handleDelete}
-      className="bg-red-600 hover:bg-red-700 text-white py-2 px-2 rounded-lg font-semibold transition"
-    >
-      Delete Property
-    </button>
+            {user && property?.owner?._id === user._id && (
+              <div className="flex justify-start mt-4 gap-3">
+                <button
+                  onClick={handleDelete}
+                  className="bg-red-600 hover:bg-red-700 text-white py-2 px-2 rounded-lg font-semibold transition"
+                >
+                  Delete Property
+                </button>
 
 
-    <Link to={`/edit-property/${property._id}`}>
-  <button className="bg-[#d16729] text-white px-4 py-2 rounded-md font-semibold">
-    Edit Property
-  </button>
-</Link>
+                <Link to={`/edit-property/${property._id}`}>
+                  <button className="bg-[#d16729] text-white px-4 py-2 rounded-md font-semibold">
+                    Edit Property
+                  </button>
+                </Link>
 
-    
-  </div>
-)}
-{/* Review Section */}
-<ReviewSection propertyId={property._id} />
+
+              </div>
+            )}
+            {/* Review Section */}
+            <ReviewSection propertyId={property._id} />
 
 
           </div>
@@ -334,34 +361,34 @@ const PropertyDetail = () => {
 
       {/* Live Video Tour Modal */}
       {liveTourActive && (
-  <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
-    <div className="bg-white p-4 rounded-lg relative w-[90%] max-w-3xl flex flex-col">
-      
-      {/* Close X button at top */}
-      <button
-        onClick={() => setLiveTourActive(false)}
-        className="absolute top-2 right-2 text-red-500 font-bold text-xl"
-      >
-        ✕
-      </button>
-      
-      {/* Live Video Tour Component */}
-      <div className="flex-1">
-        <LiveVideoTour propertyId={property._id} />
-      </div>
-      
-      {/* End Video Button */}
-      <div className="mt-4 text-center">
-        <button
-          onClick={() => setLiveTourActive(false)}
-          className="bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition"
-        >
-          End Video Tour
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">
+          <div className="bg-white p-4 rounded-lg relative w-[90%] max-w-3xl flex flex-col">
+
+            {/* Close X button at top */}
+            <button
+              onClick={() => setLiveTourActive(false)}
+              className="absolute top-2 right-2 text-red-500 font-bold text-xl"
+            >
+              ✕
+            </button>
+
+            {/* Live Video Tour Component */}
+            <div className="flex-1">
+              <LiveVideoTour propertyId={property._id} />
+            </div>
+
+            {/* End Video Button */}
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setLiveTourActive(false)}
+                className="bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition"
+              >
+                End Video Tour
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

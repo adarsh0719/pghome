@@ -33,6 +33,10 @@ const EditProperty = () => {
     rules: [],
     liveViewAvailable: false,
     videoUrl: "",
+    vacancies: {
+      single: 0,
+      double: 0
+    }
   });
 
   const amenitiesList = ["WiFi", "AC", "Food", "Laundry", "Parking", "Security", "Gym", "Pool", "TV", "Refrigerator"];
@@ -62,6 +66,10 @@ const EditProperty = () => {
           rules: prop.rules || [],
           liveViewAvailable: prop.liveViewAvailable || false,
           videoUrl: prop.videoUrl || "",
+          vacancies: {
+            single: prop.vacancies?.single || 0,
+            double: prop.vacancies?.double || 0
+          }
         });
 
         setExistingImages(prop.images || []);
@@ -122,6 +130,15 @@ const EditProperty = () => {
       return;
     }
 
+    if (name.startsWith("vacancies.")) {
+      const key = name.split('.')[1];
+      setFormData((prev) => ({
+        ...prev,
+        vacancies: { ...prev.vacancies, [key]: parseInt(value) || 0 },
+      }));
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -161,6 +178,8 @@ const EditProperty = () => {
       submitData.append("securityDeposit", formData.securityDeposit || "0");
       submitData.append("liveViewAvailable", formData.liveViewAvailable);
       submitData.append("videoUrl", formData.videoUrl);
+      submitData.append("vacancies[single]", formData.vacancies.single);
+      submitData.append("vacancies[double]", formData.vacancies.double);
 
       // Location fields
       submitData.append("location[address]", formData.location.address);
@@ -273,6 +292,34 @@ const EditProperty = () => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   placeholder="e.g., 10000 (optional)"
+                />
+              </div>
+            </div>
+
+
+
+            {/* Vacancies */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Single Room Vacancies</label>
+                <input
+                  type="number"
+                  min="0"
+                  name="vacancies.single"
+                  value={formData.vacancies.single}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Double Room Vacancies</label>
+                <input
+                  type="number"
+                  min="0"
+                  name="vacancies.double"
+                  value={formData.vacancies.double}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
             </div>
@@ -491,8 +538,8 @@ const EditProperty = () => {
             )}
           </form>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 
