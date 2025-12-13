@@ -7,6 +7,7 @@ import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatWindow from '../../components/chat/ChatWindow';
 import { useNavigate } from "react-router-dom";
+import BrokerProfileView from '../../components/property/BrokerProfileView';
 
 const ProfileInDetail = () => {
   const { id } = useParams();
@@ -19,6 +20,9 @@ const ProfileInDetail = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
+
+
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -28,16 +32,16 @@ const ProfileInDetail = () => {
         console.log(" Profile data fetched:", data);
         setProfile(data);
 
-        // Fetch connection status separately
+        // Fetch connection status
         try {
           const statusRes = await axios.get(`/api/connections/status/${data.user._id}`, {
             headers: { Authorization: `Bearer ${user.token}` },
           });
           setConnectionStatus(statusRes.data.status);
         } catch (err) {
-          console.warn(' Could not fetch connection status:', err.response?.data || err.message);
-          setConnectionStatus('none'); // default fallback
+          // ignore
         }
+
 
       } catch (err) {
         console.error(' Error fetching profile:', err.response?.data || err.message);
@@ -47,6 +51,8 @@ const ProfileInDetail = () => {
 
     fetchProfile();
   }, [id, user]);
+
+
 
   const handleSendRequest = async () => {
     if (!profile?.user?._id) {
@@ -137,7 +143,7 @@ const ProfileInDetail = () => {
     );
   }
 
- return (
+  return (
     <div className="min-h-screen bg-gray-50 pt-28 sm:pt-32 px-3 sm:px-4">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -217,7 +223,7 @@ const ProfileInDetail = () => {
                 {profile.occupation || 'Looking for roommate'}
               </p>
               <div className="flex flex-wrap items-center justify-center mt-4 gap-3">
-               
+
                 <span className="bg-green-50 text-green-700 px-4 py-2 rounded-full font-medium text-sm sm:text-base">
                   ₹{profile.budget || '0'}/month
                 </span>
@@ -231,11 +237,10 @@ const ProfileInDetail = () => {
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`py-3 sm:py-4 px-1 border-b-2 font-semibold transition-all duration-300 ${
-                      activeTab === tab
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                    className={`py-3 sm:py-4 px-1 border-b-2 font-semibold transition-all duration-300 ${activeTab === tab
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
                   >
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   </button>
@@ -243,186 +248,191 @@ const ProfileInDetail = () => {
               </nav>
             </div>
 
-            {/* Tab Content */}
-            <div className="min-h-[400px]">
-              {activeTab === 'overview' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8"
-                >
-                  {/* Bio Section */}
-                  <div className="bg-gray-50 rounded-xl p-4 sm:p-6 border border-gray-200">
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
-                      About Me
-                    </h3>
-                    <p className="text-gray-700 leading-relaxed text-sm sm:text-base">
-                      {profile.bio ||
-                        "Hey! I'm looking for a compatible roommate to share an amazing living space. I believe in maintaining a clean, friendly environment where we can both feel at home."}
-                    </p>
-                  </div>
+            {/* Broker Listing Component */}
+            {profile.user?._id && (
+              <BrokerProfileView
+                userId={profile.user._id}
+                userName={profile.user.name}
+                userToken={user?.token}
+              />
+            )}
 
-                  {/* Quick Stats */}
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white rounded-xl p-4 sm:p-6 border border-gray-200">
-                        <div className="text-xl sm:text-2xl font-bold text-gray-900">
-                          {profile.age || '?'}
-                        </div>
-                        <div className="text-gray-600 font-medium text-sm sm:text-base">
-                          Age
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-xl p-4 sm:p-6 border border-gray-200">
-                        <div className="text-xl sm:text-2xl font-bold text-gray-900">
-                          {profile.occupation ? 'Professional' : 'Student'}
-                        </div>
-                        <div className="text-gray-600 font-medium text-sm sm:text-base">
-                          Status
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-blue-50 rounded-xl p-4 sm:p-6 border border-blue-200">
-                      <div className="text-lg sm:text-xl font-bold text-blue-900">
-                        ₹{profile.budget || 'Flexible'}
-                      </div>
-                      <div className="text-blue-700 font-medium text-sm sm:text-base">
-                        Monthly Budget
-                      </div>
-                    </div>
-                    {profile.currentProperty ? (
-                      <div className="mt-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-amber-700 font-medium">Currently Staying At</p>
-                            <p className="text-xl font-bold text-amber-900">{profile.currentProperty.title}</p>
-                            <p className="text-gray-700">{profile.currentProperty.location.city}</p>
-                          </div>
-                          <button
-                            onClick={() => navigate(`/properties/${profile.currentProperty._id}`)}
-                            className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg"
-                          >
-                            View PG
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 italic">Not staying in any PG currently</p>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-
-              {activeTab === 'lifestyle' && profile.habits && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-                >
-                  {Object.entries(profile.habits).map(([key, value]) => (
-                    <motion.div
-                      key={key}
-                      whileHover={{ y: -2 }}
-                      className="bg-white rounded-xl p-4 sm:p-6 border border-gray-200 hover:shadow-md transition-all duration-300"
-                    >
-                      <h4 className="font-semibold text-gray-800 capitalize mb-2 sm:mb-3 text-sm sm:text-base">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </h4>
-                      <div
-                        className={`text-base sm:text-lg font-semibold ${
-                          typeof value === 'boolean'
-                            ? value
-                              ? 'text-green-600'
-                              : 'text-red-600'
-                            : 'text-blue-600'
-                        }`}
-                      >
-                        {typeof value === 'boolean'
-                          ? value
-                            ? 'Yes'
-                            : 'No'
-                          : value.toString()}
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
-
-              {activeTab === 'preferences' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-xl p-6 sm:p-8 border border-gray-200"
-                >
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">
-                    Roommate Preferences
+            {activeTab === 'overview' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8"
+              >
+                {/* Bio Section */}
+                <div className="bg-gray-50 rounded-xl p-4 sm:p-6 border border-gray-200">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
+                    About Me
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                    <div className="space-y-3 sm:space-y-4">
-                      <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border">
-                        <span className="font-medium text-sm sm:text-base">
-                          Cleanliness
-                        </span>
-                        <span className="bg-green-100 text-green-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
-                          Important
-                        </span>
+                  <p className="text-gray-700 leading-relaxed text-sm sm:text-base">
+                    {profile.bio ||
+                      "Hey! I'm looking for a compatible roommate to share an amazing living space. I believe in maintaining a clean, friendly environment where we can both feel at home."}
+                  </p>
+                </div>
+
+                {/* Quick Stats */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white rounded-xl p-4 sm:p-6 border border-gray-200">
+                      <div className="text-xl sm:text-2xl font-bold text-gray-900">
+                        {profile.age || '?'}
                       </div>
-                      <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border">
-                        <span className="font-medium text-sm sm:text-base">
-                          Quiet Hours
-                        </span>
-                        <span className="bg-blue-100 text-blue-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
-                          Respected
-                        </span>
+                      <div className="text-gray-600 font-medium text-sm sm:text-base">
+                        Age
                       </div>
                     </div>
-                    <div className="space-y-3 sm:space-y-4">
-                      <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border">
-                        <span className="font-medium text-sm sm:text-base">
-                          Guest Policy
-                        </span>
-                        <span className="bg-purple-100 text-purple-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
-                          Flexible
-                        </span>
+                    <div className="bg-white rounded-xl p-4 sm:p-6 border border-gray-200">
+                      <div className="text-xl sm:text-2xl font-bold text-gray-900">
+                        {profile.occupation ? 'Professional' : 'Student'}
                       </div>
-                      <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border">
-                        <span className="font-medium text-sm sm:text-base">
-                          Shared Expenses
-                        </span>
-                        <span className="bg-orange-100 text-orange-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
-                          Fair Split
-                        </span>
+                      <div className="text-gray-600 font-medium text-sm sm:text-base">
+                        Status
                       </div>
                     </div>
                   </div>
-                </motion.div>
-              )}
 
-              {activeTab === 'gallery' && profile.images && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"
-                >
-                  {profile.images.map((image, index) => (
-                    <motion.div
-                      key={index}
-                      whileHover={{ scale: 1.02 }}
-                      className="aspect-square rounded-lg overflow-hidden border border-gray-200 hover:shadow-md transition-all duration-300 cursor-pointer bg-gray-100"
-                      onClick={() => openImageModal(image, index)}
+                  <div className="bg-blue-50 rounded-xl p-4 sm:p-6 border border-blue-200">
+                    <div className="text-lg sm:text-xl font-bold text-blue-900">
+                      ₹{profile.budget || 'Flexible'}
+                    </div>
+                    <div className="text-blue-700 font-medium text-sm sm:text-base">
+                      Monthly Budget
+                    </div>
+                  </div>
+                  {profile.currentProperty ? (
+                    <div className="mt-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-amber-700 font-medium">Currently Staying At</p>
+                          <p className="text-xl font-bold text-amber-900">{profile.currentProperty.title}</p>
+                          <p className="text-gray-700">{profile.currentProperty.location.city}</p>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/properties/${profile.currentProperty._id}`)}
+                          className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg"
+                        >
+                          View PG
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic">Not staying in any PG currently</p>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'lifestyle' && profile.habits && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
+                {Object.entries(profile.habits).map(([key, value]) => (
+                  <motion.div
+                    key={key}
+                    whileHover={{ y: -2 }}
+                    className="bg-white rounded-xl p-4 sm:p-6 border border-gray-200 hover:shadow-md transition-all duration-300"
+                  >
+                    <h4 className="font-semibold text-gray-800 capitalize mb-2 sm:mb-3 text-sm sm:text-base">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    </h4>
+                    <div
+                      className={`text-base sm:text-lg font-semibold ${typeof value === 'boolean'
+                        ? value
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                        : 'text-blue-600'
+                        }`}
                     >
-                      <img
-                        src={image}
-                        alt={`Roommate photo ${index + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
-            </div>
+                      {typeof value === 'boolean'
+                        ? value
+                          ? 'Yes'
+                          : 'No'
+                        : value.toString()}
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+
+            {activeTab === 'preferences' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-xl p-6 sm:p-8 border border-gray-200"
+              >
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">
+                  Roommate Preferences
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border">
+                      <span className="font-medium text-sm sm:text-base">
+                        Cleanliness
+                      </span>
+                      <span className="bg-green-100 text-green-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                        Important
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border">
+                      <span className="font-medium text-sm sm:text-base">
+                        Quiet Hours
+                      </span>
+                      <span className="bg-blue-100 text-blue-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                        Respected
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border">
+                      <span className="font-medium text-sm sm:text-base">
+                        Guest Policy
+                      </span>
+                      <span className="bg-purple-100 text-purple-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                        Flexible
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border">
+                      <span className="font-medium text-sm sm:text-base">
+                        Shared Expenses
+                      </span>
+                      <span className="bg-orange-100 text-orange-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                        Fair Split
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'gallery' && profile.images && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"
+              >
+                {profile.images.map((image, index) => (
+                  <motion.div
+                    key={index}
+                    whileHover={{ scale: 1.02 }}
+                    className="aspect-square rounded-lg overflow-hidden border border-gray-200 hover:shadow-md transition-all duration-300 cursor-pointer bg-gray-100"
+                    onClick={() => openImageModal(image, index)}
+                  >
+                    <img
+                      src={image}
+                      alt={`Roommate photo ${index + 1}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
           </div>
         </div>
 

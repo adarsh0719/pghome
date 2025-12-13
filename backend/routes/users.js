@@ -1,6 +1,6 @@
 const express = require('express');
 const User = require('../models/User');
-const { protect } = require('../middleware/auth'); 
+const { protect } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
@@ -155,5 +155,22 @@ router.get("/full-details/:id", async (req, res) => {
   }
 });
 
+
+
+const userController = require('../controllers/userController');
+
+const { uploadMultiple } = require('../middleware/upload');
+
+// Update broker listing
+router.put('/broker-listing', protect, uploadMultiple, userController.updateBrokerListing);
+
+// Delete broker listing
+router.delete('/broker-listing', protect, userController.deleteBrokerListing);
+
+// Get broker listing
+router.get('/broker-listing', protect, userController.getBrokerListing);
+
+// Get broker listing by UserId
+router.get('/broker-listing/:userId', protect, userController.getBrokerListingByUserId);
 
 module.exports = router;

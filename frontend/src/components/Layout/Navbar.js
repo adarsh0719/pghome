@@ -4,13 +4,13 @@ import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
 import ProfilePopup from "./ProfilePopup";
 import "./Navbar.css";
-import { IoNotificationsOutline } from "react-icons/io5"; 
+import { IoNotificationsOutline } from "react-icons/io5";
 const Navbar = () => {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [profileImage, setProfileImage] = useState("/placeholder.jpg");
-const [notificationCount, setNotificationCount] = useState(0);
+  const [notificationCount, setNotificationCount] = useState(0);
 
 
 
@@ -32,16 +32,16 @@ const [notificationCount, setNotificationCount] = useState(0);
   };
 
   useEffect(() => {
-  if (!user) return;
+    if (!user) return;
 
-  fetchNotificationCount(); // initial call
+    fetchNotificationCount(); // initial call
 
-  const interval = setInterval(() => {
-    fetchNotificationCount();
-  }, 5000); // refresh every 5 seconds
+    const interval = setInterval(() => {
+      fetchNotificationCount();
+    }, 5000); // refresh every 5 seconds
 
-  return () => clearInterval(interval);
-}, [user]);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     const fetchProfileImage = async () => {
@@ -79,14 +79,28 @@ const [notificationCount, setNotificationCount] = useState(0);
           PG <span className="text-orange-600">to Home</span>
         </Link>
 
-        {/* Hamburger (mobile only) */}
-        <div
-          className="hamburger md:hidden"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          <span className={`bar ${menuOpen ? "open" : ""}`}></span>
-          <span className={`bar ${menuOpen ? "open" : ""}`}></span>
-          <span className={`bar ${menuOpen ? "open" : ""}`}></span>
+        {/* Mobile Right Section (Notification + Hamburger) */}
+        <div className="flex items-center space-x-4 md:hidden">
+          {user && (
+            <Link to="/notifications" className="relative text-2xl text-gray-800">
+              <IoNotificationsOutline />
+              {notificationCount > 0 && (
+                <span className="absolute -top-1.5 -right-1 bg-red-600 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                  {notificationCount}
+                </span>
+              )}
+            </Link>
+          )}
+
+          {/* Hamburger */}
+          <div
+            className="hamburger"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            <span className={`bar ${menuOpen ? "open" : ""}`}></span>
+            <span className={`bar ${menuOpen ? "open" : ""}`}></span>
+            <span className={`bar ${menuOpen ? "open" : ""}`}></span>
+          </div>
         </div>
 
         {/* Desktop Middle Links */}
@@ -110,15 +124,15 @@ const [notificationCount, setNotificationCount] = useState(0);
         <div className="hidden md:flex items-center space-x-4">
           {user ? (
             <>
-           <Link to="/notifications" className="relative text-2xl">
-  <IoNotificationsOutline />
+              <Link to="/notifications" className="relative text-2xl">
+                <IoNotificationsOutline />
 
-  {notificationCount > 0 && (
-    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
-      {notificationCount}
-    </span>
-  )}
-</Link>
+                {notificationCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                    {notificationCount}
+                  </span>
+                )}
+              </Link>
 
               <span className="text-gray-700">
                 Hi, {user.name.split(" ")[0]}
@@ -168,19 +182,7 @@ const [notificationCount, setNotificationCount] = useState(0);
             Roommate Finder
           </Link>
           <Link to="/posts" className="mobile-link" onClick={() => setMenuOpen(false)}>Posts</Link>
-           <Link
-  to="/notifications"
-  className="mobile-link relative flex justify-center items-center text-3xl py-3"
-  onClick={() => setMenuOpen(false)}
->
-  <IoNotificationsOutline />
 
-  {notificationCount > 0 && (
-    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
-      {notificationCount}
-    </span>
-  )}
-</Link>
 
 
           {user ? (

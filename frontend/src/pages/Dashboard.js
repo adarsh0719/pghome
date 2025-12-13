@@ -4,11 +4,13 @@ import { Link } from 'react-router-dom';
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
+import BrokerListingSection from "../components/property/BrokerListingSection";
+
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [coupon, setCoupon] = useState(null);
-  const [myProfile, setMyProfile] = useState(null);
+
   useEffect(() => {
     const fetchCoupon = async () => {
       if (!user?._id) return;
@@ -25,20 +27,7 @@ const Dashboard = () => {
     await logout();
   };
 
-  const fetchProfile = async () => {
-    try {
-      const { data } = await axios.get("/api/roommate/profile", {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-      setMyProfile(data);
-    } catch (err) {
-      // No profile yet → that's fine
-    }
-  };
 
-  useEffect(() => {
-    if (user) fetchProfile();
-  }, [user]);
 
   return (
     <div className="min-h-screen bg-[#f0f0ee] py-10 pt-32">
@@ -185,7 +174,7 @@ const Dashboard = () => {
         </div>
 
         {/* Subscription Status */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
           <h3 className="text-xl font-semibold mb-4">Subscription Status</h3>
           <div className="flex items-center justify-between">
             <div>
@@ -210,57 +199,10 @@ const Dashboard = () => {
 
 
 
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 mt-5">
-          <h3 className="text-xl font-semibold mb-4 flex items-center">
-            <span className="mr-2">I have room(s) available</span>
-            {myProfile?.lookingForRoommate && (
-              <span className="text-green-500 text-xl">Live</span>
-            )}
-          </h3>
 
-          <div className="flex items-center space-x-4">
-            <input
-              type="number"
-              min="0"
-              max="10"
-              defaultValue={myProfile?.availableRooms || 0}
-              id="roomsInput"
-              className="w-24 px-4 py-3 border border-gray-300 rounded-xl text-center text-lg font-medium focus:outline-none focus:ring-2 focus:ring-amber-500"
-              placeholder="0"
-            />
-            <span className="text-gray-600">room(s) available</span>
-          </div>
 
-          <button
-            onClick={async () => {
-              const value = document.getElementById("roomsInput").value || "0";
-              try {
-                await axios.put("/api/roommate/available-rooms",
-                  { availableRooms: value },
-                  { headers: { Authorization: `Bearer ${user.token}` } }
-                );
-                toast.success(
-                  value > 0
-                    ? `Now showing ${value} room(s) available!`
-                    : "No longer showing rooms"
-                );
-                fetchProfile();
-              } catch (err) {
-                toast.error("Failed to update");
-              }
-            }}
-            className="mt-4 bg-[#d16729] hover:bg-[#b5571f] text-white font-bold px-8 py-3 rounded-xl transition"
-          >
-            {myProfile?.lookingForRoommate ? "Update" : "Go Live"}
-          </button>
-
-          <p className="text-sm text-gray-500 mt-3">
-            {myProfile?.lookingForRoommate
-              ? `You're visible in roommate finder with ${myProfile.availableRooms} room(s)`
-              : "Let people know you have space!"}
-          </p>
-
-        </div>
+        {/* BROKER LISTING SECTION */}
+        <BrokerListingSection user={user} />
 
         {/* --- MY BOOKINGS SECTION (For All Users) --- */}
         <MyBookingsSection user={user} />
@@ -407,51 +349,84 @@ const MyBookingsSection = ({ user }) => {
 
   if (bookings.length === 0) return null;
 
-  return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-      <h3 className="text-xl font-semibold mb-4">My Bookings & Requests</h3>
 
-      <div className="grid gap-4 md:grid-cols-2">
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-5 mb-8 border border-gray-100">
+      <div className="mb-4">
+        <h3 className="text-lg font-bold text-gray-900">My Bookings & Requests</h3>
+      </div>
+
+      <div className="flex overflow-x-auto space-x-4 pb-2 scrollbar-hide">
         {bookings.map(book => (
-          <div key={book._id} className="border border-gray-100 rounded-xl p-4 bg-gray-50 flex flex-col justify-between">
-            <div>
+          <div
+            key={book._id}
+            className="group border border-gray-100 rounded-xl p-3 bg-white hover:border-[#d16729]/30 transition-all duration-200 relative overflow-hidden flex flex-col justify-between w-[85vw] md:w-[calc(50%-8px)] flex-shrink-0"
+          >
+            <div className="pl-2.5">
               <div className="flex justify-between items-start mb-2">
-                <h4 className="font-bold text-gray-800">{book.property?.title}</h4>
-                <span className={`text-xs px-2 py-1 rounded-full font-bold uppercase ${book.approvalStatus === 'approved' ? 'bg-green-100 text-green-700' :
-                  book.approvalStatus === 'rejected' ? 'bg-red-100 text-red-700' :
-                    'bg-yellow-100 text-yellow-700'
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900 leading-tight truncate max-w-[150px] sm:max-w-xs" title={book.property?.title}>
+                    {book.property?.title || 'Unknown Property'}
+                  </h4>
+                  <p className="text-[10px] items-center font-medium text-gray-400 uppercase tracking-wide flex mt-0.5">
+                    {new Date(book.createdAt).toLocaleDateString()} • {book.months} Months
+                  </p>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border 
+                  ${book.status === 'paid' ? 'bg-black text-white rounded border-green-100' :
+                    book.approvalStatus === 'approved' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                      book.approvalStatus === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' :
+                        'bg-amber-50 text-amber-700 border-amber-100'
                   }`}>
-                  {book.approvalStatus === 'pending' ? 'Waiting Approval' : book.approvalStatus}
+                  {book.status === 'paid' ? 'Booked' : book.approvalStatus === 'pending' ? 'Reviewing' : book.approvalStatus}
                 </span>
               </div>
-              <p className="text-sm text-gray-600 mb-1">Total: ₹{book.totalAmount}</p>
-              <p className="text-xs text-gray-400">Date: {new Date(book.createdAt).toLocaleDateString()}</p>
 
-              {book.referralCodeApplied && <p className="text-xs text-green-600 mt-1">Referral Applied: {book.referralCodeApplied}</p>}
-            </div>
+              <div className="flex items-center justify-between text-xs mb-2">
+                <span className="font-bold text-gray-800">₹{book.totalAmount.toLocaleString()}</span>
+                {book.referralCodeApplied && (
+                  <span className="text-gray-500 text-[10px]">
+                    Ref Code: <span className="font-medium text-gray-800">{book.referralCodeApplied}</span>
+                  </span>
+                )}
+              </div>
 
-            <div className="mt-4">
-              {book.status === 'paid' ? (
-                <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm font-bold text-center border border-green-200">
-                  Booking Confirmed
-                </div>
-              ) : book.approvalStatus === 'approved' ? (
-                <button
-                  onClick={() => handlePayment(book._id)}
-                  disabled={loading}
-                  className="w-full bg-[#d16729] text-white py-2 rounded-lg font-bold hover:bg-[#b5571f] transition disabled:opacity-50"
-                >
-                  {loading ? 'Processing...' : 'Pay Now'}
-                </button>
-              ) : book.approvalStatus === 'rejected' ? (
-                <div className="bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm text-center border border-red-200">
-                  Request Rejected
-                </div>
-              ) : (
-                <div className="text-center text-sm text-gray-500 italic">
-                  Waiting for owner to approve...
-                </div>
-              )}
+              <div className="mt-2">
+                {book.status === 'paid' ? (
+                  <div className="rounded-lg p-2">
+                    <div className="flex flex-col space-y-2">
+                      <span className="text-[9px] text-gray-400 font-bold uppercase">Coupon Code</span>
+                      {book.coupon ? (
+                        <div className="relative inline-block px-4 py-2 bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 text-white font-mono tracking-widest text-sm rounded-md shadow-inner border border-gray-600 select-all text-center">
+                          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/noise.png')] opacity-10 rounded-md"></div>
+                          <span className="relative z-10">
+                            {book.coupon}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400 italic">Generating...</p>
+                      )}
+                    </div>
+                  </div>
+                ) : book.approvalStatus === 'approved' ? (
+                  <button
+                    onClick={() => handlePayment(book._id)}
+                    disabled={loading}
+                    className="w-full h-8 flex items-center  mt-10 justify-center space-x-1.5 bg-[#d16729] hover:bg-[#b5571f] text-white text-xs rounded-lg font-bold shadow-sm transition-all"
+                  >
+                    <span>Pay Now</span>
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                  </button>
+                ) : book.approvalStatus === 'rejected' ? (
+                  <div className="text-center text-xs text-red-600 mt-10 font-bold bg-red-50 py-1.5 rounded-lg border border-red-100">
+                    Rejected
+                  </div>
+                ) : (
+                  <div className="text-center text-xs mt-10 text-amber-600 bg-amber-50 py-1.5 font-bold rounded-lg border border-amber-100 italic">
+                    Waiting approval...
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ))}

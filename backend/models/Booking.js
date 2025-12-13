@@ -18,7 +18,11 @@ const bookingSchema = new mongoose.Schema({
   isReferralRewardClaimed: { type: Boolean, default: false },
 
   // Booking Request Status
-  approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }
+  approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+
+  // Broker / Reseller
+  brokerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  commissionAmount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Booking', bookingSchema);

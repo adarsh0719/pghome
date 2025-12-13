@@ -56,6 +56,43 @@ router.put('/users/:id/make-admin', protect, adminOnly, async (req, res) => {
   }
 });
 
+// @route   PUT /api/admin/users/:id/remove-admin
+// @desc    Remove admin status from a user
+// @access  Admin
+router.put('/users/:id/remove-admin', protect, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (user) {
+      user.isAdmin = false;
+      const updatedUser = await user.save();
+      res.json(updatedUser);
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @route   DELETE /api/admin/users/:id
+// @desc    Delete a user
+// @access  Admin
+router.delete('/users/:id', protect, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (user) {
+      await User.deleteOne({ _id: user._id });
+      res.json({ message: 'User removed' });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // @route   GET /api/admin/properties
 // @desc    Get all properties
 // @access  Admin

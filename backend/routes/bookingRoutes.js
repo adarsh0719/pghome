@@ -51,6 +51,28 @@ router.post('/request-booking', protect, async (req, res) => {
     const basePrice = property.rent * months;
     let totalAmount = type === 'double' ? basePrice * 2 : basePrice;
 
+    // --- BROKER / RESELLER LOGIC ---
+    let commissionAmount = 0;
+    const { brokerId } = req.body;
+    const BrokerListing = require('../models/BrokerListing');
+
+    if (brokerId) {
+      const brokerListing = await BrokerListing.findOne({ broker: brokerId, property: propertyId });
+      if (brokerListing && brokerListing.isActive) {
+        // Use Broker's Price
+        const brokerBasePrice = brokerListing.price * months;
+        const originalPrice = totalAmount; // This is the owner's price calculated earlier
+
+        // Override totalAmount with Broker's price
+        totalAmount = type === 'double' ? brokerBasePrice * 2 : brokerBasePrice;
+
+        // Commission is validity check
+        if (totalAmount > originalPrice) {
+          commissionAmount = totalAmount - originalPrice;
+        }
+      }
+    }
+
     // --- REFERRAL DISCOUNT ---
     let discountAmount = 0;
     let validReferralCode = null;
@@ -90,7 +112,9 @@ router.post('/request-booking', protect, async (req, res) => {
       referralCodeApplied: validReferralCode,
       discountAmount,
       rewardsUsed,
-      isReferralRewardClaimed: false
+      isReferralRewardClaimed: false,
+      brokerId,
+      commissionAmount
     });
 
     res.json({ message: 'Booking request sent to owner!', bookingId: booking._id });
@@ -236,6 +260,16 @@ router.get('/verify-payment', async (req, res) => {
         }
       }
 
+      // 3. Credt REWARDS to BROKER
+      if (booking.brokerId && booking.commissionAmount > 0) {
+        const broker = await User.findById(booking.brokerId);
+        if (broker) {
+          broker.referralRewards = (broker.referralRewards || 0) + booking.commissionAmount;
+          await broker.save();
+          console.log(`Commission of ₹${booking.commissionAmount} credited to broker ${broker.email}`);
+        }
+      }
+
       await booking.save();
     }
 
@@ -250,10 +284,24 @@ router.get('/verify-payment', async (req, res) => {
 });
 
 router.get('/owner/:ownerId', async (req, res) => {
-  const bookings = await Booking.find({ owner: req.params.ownerId })
-    .populate('property')
-    .populate('bookedBy', 'name email kycStatus kycDocument'); // Added KYC fields
-  res.json(bookings);
+  try {
+    const bookings = await Booking.find({ owner: req.params.ownerId })
+      .populate('property')
+      .populate('bookedBy', 'name email kycStatus kycDocument');
+
+    // Hide broker markup from owner
+    const adjustedBookings = bookings.map(booking => {
+      const b = booking.toObject();
+      if (b.commissionAmount > 0) {
+        b.totalAmount = b.totalAmount - b.commissionAmount;
+      }
+      return b;
+    });
+
+    res.json(adjustedBookings);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching owner bookings' });
+  }
 });
 
 router.get('/my-coupon/:userId', async (req, res) => {

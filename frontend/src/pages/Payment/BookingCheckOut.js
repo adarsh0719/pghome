@@ -10,12 +10,17 @@ const BookingCheckOut = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
   const property = state?.property;
+  // Broker Details from Navigation State
+  const brokerId = state?.brokerId;
+  const brokerPrice = state?.brokerPrice;
+  const brokerName = state?.brokerName;
 
   const [type, setType] = useState("single");
   const [months, setMonths] = useState(3);
   const [partnerEmail, setPartnerEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [existingBooking, setExistingBooking] = useState(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     const fetchExistingBooking = async () => {
@@ -73,7 +78,9 @@ const BookingCheckOut = () => {
     );
   }
 
-  const baseTotal = type === "double" ? property.rent * months * 2 : property.rent * months;
+  // Use Broker Price if available, otherwise Property Rent
+  const baseRent = brokerPrice || property.rent;
+  const baseTotal = type === "double" ? baseRent * months * 2 : baseRent * months;
   let totalAfterReferral = Math.max(0, baseTotal - discount);
 
   // Logic for Rewards
@@ -83,7 +90,7 @@ const BookingCheckOut = () => {
   }
   const finalTotal = Math.max(0, totalAfterReferral - rewardDiscount);
 
-  const monthlyPerPerson = type === "double" ? property.rent : property.rent;
+  const monthlyPerPerson = baseRent;
 
   const handleApplyReferral = async () => {
     if (!referralCode.trim()) return;
@@ -126,14 +133,21 @@ const BookingCheckOut = () => {
     try {
       setLoading(true);
       // Use new request-booking endpoint
-      const { data } = await axios.post("/api/bookings/request-booking", {
+      const payload = {
         propertyId: property._id,
         type,
         months,
         partnerEmail: type === "double" ? partnerEmail : null,
         referralCode: isCodeValid ? referralCode : null,
         useRewards: useRewards
-      }, {
+      };
+
+      // Add Broker ID if booking via broker
+      if (brokerId) {
+        payload.brokerId = brokerId;
+      }
+
+      const { data } = await axios.post("/api/bookings/request-booking", payload, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
 
@@ -157,6 +171,23 @@ const BookingCheckOut = () => {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Complete Your Booking</h1>
           <p className="text-gray-600">Review your selection and proceed to payment</p>
         </div>
+
+        {/* Broker Banner */}
+        {brokerId && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="bg-amber-500 text-white text-xs font-bold px-2 py-1 rounded uppercase">
+                Broker Offer
+              </span>
+              <span className="text-amber-900 font-medium">
+                You are booking via <b>{brokerName}</b>. Special pricing applies.
+              </span>
+            </div>
+            <div className="text-amber-700 font-bold">
+              ₹{brokerPrice}/mo
+            </div>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Property Overview Card */}
@@ -198,7 +229,7 @@ const BookingCheckOut = () => {
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-700 font-medium">Monthly Rent</span>
-                <span className="text-xl font-semibold text-gray-900">₹{property.rent}/month</span>
+                <span className="text-xl font-semibold text-gray-900">₹{baseRent}/month</span>
               </div>
             </div>
           </div>
@@ -223,7 +254,7 @@ const BookingCheckOut = () => {
                 >
                   <div className="text-center">
                     <div className="font-medium text-sm">Single Shared</div>
-                    <div className="text-xs mt-1 opacity-90">₹{property.rent}/month</div>
+                    <div className="text-xs mt-1 opacity-90">₹{baseRent}/month</div>
                   </div>
                 </button>
                 <button
@@ -235,7 +266,7 @@ const BookingCheckOut = () => {
                 >
                   <div className="text-center">
                     <div className="font-medium text-sm">Double Shared</div>
-                    <div className="text-xs mt-1 opacity-90">₹{property.rent * 2}/month</div>
+                    <div className="text-xs mt-1 opacity-90">₹{baseRent * 2}/month</div>
                   </div>
                 </button>
               </div>
@@ -392,8 +423,29 @@ const BookingCheckOut = () => {
               )}
             </div>
 
-            {/* ACTION BUTTON */}          {/* Action Button */}
-            {/* Action Button Logic */}
+
+            {/* TERMS & CONDITIONS */}
+            <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+              <h4 className="font-semibold text-gray-900 mb-2">Terms & Conditions</h4>
+              <ul className="space-y-1 mb-4 text-sm text-gray-700 list-disc list-inside">
+                <li>I accept responsibility for any activity inside PG/Flat.</li>
+                <li>I agree to refund/penalty policies.</li>
+                <li>I understand liabilities related to damage, misconduct, or unpaid dues.</li>
+              </ul>
+              <label className="flex items-center space-x-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="w-5 h-5 text-[#d16729] border-gray-300 rounded focus:ring-[#d16729] cursor-pointer"
+                />
+                <span className="text-sm font-medium text-gray-900 group-hover:text-gray-700">
+                  I read and agree to the Terms & Conditions
+                </span>
+              </label>
+            </div>
+
+            {/* ACTION BUTTON */}
             {existingBooking ? (
               existingBooking.status === 'paid' ? (
                 <button disabled className="w-full bg-green-600 text-white py-4 rounded-xl text-lg font-bold shadow-lg opacity-80 cursor-not-allowed">
@@ -402,8 +454,11 @@ const BookingCheckOut = () => {
               ) : existingBooking.approvalStatus === 'approved' ? (
                 <button
                   onClick={handlePayment}
-                  disabled={loading}
-                  className="w-full bg-[#d16729] text-white py-4 rounded-xl text-lg font-bold hover:bg-[#b5571f] transition transform hover:scale-[1.02] shadow-lg disabled:opacity-50"
+                  disabled={loading || !termsAccepted}
+                  className={`w-full py-4 rounded-xl text-lg font-bold shadow-lg transition transform 
+                    ${loading || !termsAccepted
+                      ? 'bg-gray-400 cursor-not-allowed opacity-70'
+                      : 'bg-[#d16729] hover:bg-[#b5571f] hover:scale-[1.02] text-white'}`}
                 >
                   {loading ? 'Processing...' : `Pay Now (₹${existingBooking.totalAmount})`}
                 </button>
@@ -419,9 +474,9 @@ const BookingCheckOut = () => {
             ) : (
               <button
                 onClick={handleBookNow}
-                disabled={loading || (property.vacancies && property.vacancies[type] === 0)}
+                disabled={loading || !termsAccepted || (property.vacancies && property.vacancies[type] === 0)}
                 className={`w-full py-4 rounded-xl text-lg font-bold shadow-lg flex justify-center items-center transition transform
-                  ${loading || (property.vacancies && property.vacancies[type] === 0)
+                  ${loading || !termsAccepted || (property.vacancies && property.vacancies[type] === 0)
                     ? 'bg-gray-400 cursor-not-allowed opacity-70'
                     : 'bg-[#d16729] hover:bg-[#b5571f] hover:scale-[1.02] text-white'}`}
               >

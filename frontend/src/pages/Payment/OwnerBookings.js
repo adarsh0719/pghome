@@ -214,7 +214,7 @@ const OwnerBookings = () => {
 
       {/* --- MODAL (Outside Loop) --- */}
       {showModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4 pt-20">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-0 overflow-hidden transform transition-all scale-100">
 
             <div className="bg-[#d16729] p-4 flex justify-between items-center text-white">
