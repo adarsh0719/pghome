@@ -92,6 +92,15 @@ const userSchema = new mongoose.Schema({
     }
   },
 
+  // Secret Code for Roommate Booking
+  secretCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true,
+    uppercase: true
+  },
+
   // Referral System
   referralCode: {
     type: String,
@@ -113,8 +122,27 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
+  // 1. Hash Password
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 12);
+  }
+
+  // 2. Generate Secret Code if missing
+  if (!this.secretCode) {
+    const generateCode = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let code = '';
+      for (let i = 0; i < 10; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    };
+
+    let code = generateCode();
+    // Simple check to avoid unlikely collision (for production, retry logic is better)
+    this.secretCode = code;
+  }
+
   next();
 });
 

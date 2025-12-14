@@ -26,7 +26,7 @@ export default function KycForm() {
 
   const handleFile = (fileSetter) => (e) => {
     const file = e.target.files[0];
-    if (file && file.size > 2*1024* 1024) {
+    if (file && file.size > 2 * 1024 * 1024) {
       setMsg("Each file must be under 2MB");
       return;
     }
@@ -81,9 +81,9 @@ export default function KycForm() {
         </div>
       </div>
 
-     
+
       <p className="text-sm text-gray-500 mb-6 text-center">
-        Upload your Aadhaar for verification (Max 500KB each)
+        Upload your Aadhaar for verification (Max 2MB each)
       </p>
 
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5">
@@ -136,14 +136,13 @@ export default function KycForm() {
 
       {msg && (
         <p
-          className={`mt-4 text-sm text-center ${
-            msg.startsWith("✅") ? "text-green-600" : "text-red-600"
-          }`}
+          className={`mt-4 text-sm text-center ${msg.startsWith("✅") ? "text-green-600" : "text-red-600"
+            }`}
         >
           {msg}
         </p>
       )}
     </div>
-    
+
   );
 }

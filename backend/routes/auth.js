@@ -19,10 +19,10 @@ const signToken = (id) => {
 
 const createSendToken = (user, statusCode, res) => {
   const token = signToken(user._id); // FIX: Use _id
-  
+
   // Remove password from output
   user.password = undefined;
-  
+
   res.status(statusCode).json({
     status: 'success',
     token,
@@ -79,9 +79,17 @@ router.post('/login', async (req, res) => {
     }
 
     const user = await User.findOne({ email }).select('+password');
-    
+
     if (!user || !(await user.correctPassword(password, user.password))) {
       return res.status(401).json({ message: 'Incorrect email or password' });
+    }
+
+    // Check subscription expiry
+    if (user.subscription && user.subscription.active && user.subscription.expiresAt) {
+      if (new Date(user.subscription.expiresAt) < new Date()) {
+        user.subscription.active = false;
+        await user.save();
+      }
     }
 
     // FIX: Use the same createSendToken function
@@ -108,6 +116,19 @@ router.get('/test-token', protect, (req, res) => {
 router.get('/me', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
+
+    // Check subscription expiry
+    if (user.subscription && user.subscription.active && user.subscription.expiresAt) {
+      if (new Date(user.subscription.expiresAt) < new Date()) {
+        user.subscription.active = false;
+        await user.save();
+      }
+    }
+
+    // Auto-generate secret code if missing (Self-healing)
+    if (!user.secretCode) {
+      await user.save(); // Triggers pre('save') hook
+    }
 
     res.json({
       status: "success",

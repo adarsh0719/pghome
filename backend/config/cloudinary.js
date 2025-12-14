@@ -13,7 +13,7 @@ const storage = new CloudinaryStorage({
   cloudinary,
   params: {
     folder: 'property-rentals',
-    format: async () => 'png',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
     public_id: () => `property_${Date.now()}_${Math.random().toString(36)}`
   }
 });
@@ -41,7 +41,7 @@ const postStorage = new CloudinaryStorage({
 const postFileFilter = (req, file, cb) => {
   const isImage = file.mimetype.startsWith('image/');
   const isVideo = file.mimetype.startsWith('video/');
-  
+
   if (isImage || isVideo) {
     cb(null, true);
   } else {
@@ -50,10 +50,21 @@ const postFileFilter = (req, file, cb) => {
   }
 };
 
+// === NEW: KYC DOCUMENTS (OPTIMIZED) ===
+const kycStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'kyc-documents',
+    allowed_formats: ['jpeg', 'jpg', 'png', 'webp'], // Keep original format
+    public_id: () => `kyc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }
+});
+
 module.exports = {
   cloudinary,
   storage,
   fileFilter,
   postStorage,
-  postFileFilter
+  postFileFilter,
+  kycStorage
 };

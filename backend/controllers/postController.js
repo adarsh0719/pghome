@@ -121,14 +121,22 @@ const likePost = async (req, res) => {
 
     // RE-POPULATE AUTHOR WITH AVATAR
     const updatedPost = await Post.findById(post._id)
-      .populate('author', 'name avatar userType')
-      .populate('comments.user', 'name avatar');
+      .populate('author', 'name userType')
+      .populate('comments.user', 'name');
 
-    // Emit real-time update
-    req.io?.emit('postUpdated', updatedPost);
+    // Manually fetch profile to get avatar (like we do in getPosts)
+    const profile = await RoommateProfile.findOne({ user: post.author }).select('images');
+
+    const postObj = updatedPost.toObject();
+    if (postObj.author) {
+      postObj.author.avatar = profile?.images?.[0] || '/default-avatar.png';
+    }
+
+    // Emit real-time update (with avatar)
+    req.io?.emit('postUpdated', postObj);
 
     // RETURN THE FULL UPDATED POST
-    res.json(updatedPost);
+    res.json(postObj);
   } catch (err) {
     console.error('Like Error:', err);
     res.status(500).json({ message: 'Server error' });

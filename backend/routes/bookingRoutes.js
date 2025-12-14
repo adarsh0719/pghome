@@ -94,9 +94,13 @@ router.post('/request-booking', protect, async (req, res) => {
     }
 
     const bookedBy = [req.user._id];
-    if (type === 'double' && partnerEmail) {
-      const partner = await User.findOne({ email: partnerEmail });
-      if (!partner) return res.status(400).json({ message: 'Partner email not found' });
+    if (type === 'double') {
+      // FIX: Use Secret Code instead of Email
+      if (!partnerEmail) return res.status(400).json({ message: 'Partner secret code is required' });
+
+      const partner = await User.findOne({ secretCode: partnerEmail.trim().toUpperCase() });
+      if (!partner) return res.status(400).json({ message: 'Invalid partner secret code' });
+
       bookedBy.push(partner._id);
     }
 

@@ -10,10 +10,18 @@ console.log(typeof auth, typeof adminAuth, typeof upload.fields);
 router.post(
   '/submit',
   auth,
-  upload.fields([
-    { name: 'front', maxCount: 1 },
-    { name: 'back', maxCount: 1 },
-  ]),
+  (req, res, next) => {
+    upload.fields([
+      { name: 'front', maxCount: 1 },
+      { name: 'back', maxCount: 1 },
+    ])(req, res, (err) => {
+      if (err) {
+        console.error('Upload Error:', err);
+        return res.status(400).json({ message: err.message });
+      }
+      next();
+    });
+  },
   kycController.submitKyc
 );
 

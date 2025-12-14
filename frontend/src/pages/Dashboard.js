@@ -5,11 +5,12 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
 import BrokerListingSection from "../components/property/BrokerListingSection";
-
+import coin from "../../src/images/R.png";
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [coupon, setCoupon] = useState(null);
+  const [profileImage, setProfileImage] = useState(null);
 
   useEffect(() => {
     const fetchCoupon = async () => {
@@ -19,6 +20,17 @@ const Dashboard = () => {
         if (data?.coupon) setCoupon(data.coupon);
       } catch (error) {
         console.error("Error fetching coupon:", error);
+      }
+
+      try {
+        const { data } = await axios.get("/api/roommate/profile", {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+        if (data?.images?.length > 0) {
+          setProfileImage(data.images[0]);
+        }
+      } catch (error) {
+        // No profile or error, keep default
       }
     };
     fetchCoupon();
@@ -50,9 +62,17 @@ const Dashboard = () => {
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 sm:space-x-6">
           {/* Left side - Avatar and User Info */}
           <div className="flex items-center space-x-6">
-            <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow">
-              {user?.name?.charAt(0).toUpperCase()}
-            </div>
+            {profileImage ? (
+              <img
+                src={profileImage}
+                alt="Profile"
+                className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
+              />
+            ) : (
+              <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow">
+                {user?.name?.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">{user?.name}</h2>
               <p className="text-gray-600 capitalize">{user?.userType}</p>
@@ -69,15 +89,24 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Right side - Owner Panel button */}
-          {user?.userType === "owner" && (
-            <button
-              onClick={() => navigate("/owner-bookings")}
-              className="bg-[#d16729] hover:bg-[#b5571f] text-white font-semibold px-8 py-3 rounded-lg transition duration-200"
-            >
-              Owner Panel
-            </button>
-          )}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {user?.isAdmin && (
+              <button
+                onClick={() => navigate("/admin")}
+                className="bg-gray-900 hover:bg-black text-white font-semibold px-8 py-3 rounded-lg transition duration-200"
+              >
+                Admin Panel
+              </button>
+            )}
+            {user?.userType === "owner" && (
+              <button
+                onClick={() => navigate("/owner-bookings")}
+                className="bg-[#d16729] hover:bg-[#b5571f] text-white font-semibold px-8 py-3 rounded-lg transition duration-200"
+              >
+                Owner Panel
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Quick Actions */}
@@ -130,18 +159,67 @@ const Dashboard = () => {
             </div>
 
           </Link>
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">My Coupon</h3>
+          <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-3 shadow-[0_12px_30px_rgba(0,0,0,0.08)] flex items-center justify-center">
 
-            {coupon ? (
-              <div className="relative inline-block mt-2 px-5 py-3 bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 text-white font-mono tracking-widest text-lg rounded-md shadow-inner border border-gray-600 select-all">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/noise.png')] opacity-10 rounded-md"></div>
-                <span className="relative z-10">
-                  {coupon.toUpperCase()}
+            {/* Ambient background glow */}
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-orange-100/70 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-yellow-100/60 rounded-full blur-3xl pointer-events-none"></div>
+
+            {/* Content */}
+            <div className="relative z-10 flex items-center gap-7">
+
+              {/* Coin */}
+              <div className="w-28 h-28 flex-shrink-0">
+                <img
+                  src={coin}
+                  alt="SuperCoin"
+                  className="w-full h-full object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.22)]"
+                />
+              </div>
+
+              {/* Balance */}
+              <div className="flex flex-col">
+                <span className="text-[3.0rem] font-extrabold text-gray-900 leading-none tracking-tight">
+                  {user?.referralRewards || 0}
+                </span>
+                <span className="mt-2 text-[12px] font-semibold text-gray-500 uppercase tracking-[0.22em]">
+                  Available Balance
+                </span>
+              </div>
+
+            </div>
+          </div>
+
+
+
+
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-xl transition flex flex-col justify-between">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-1">My Secret Code</h3>
+              <p className="text-sm text-gray-500 mb-4">Share this with your roommate</p>
+            </div>
+
+            {user?.secretCode ? (
+              <div
+                className="relative w-full py-3 bg-black text-white font-mono tracking-widest text-xl rounded-xl shadow-lg border border-gray-800 flex items-center justify-center cursor-pointer group hover:bg-gray-900 transition-all"
+                onClick={() => {
+                  navigator.clipboard.writeText(user.secretCode);
+                  toast.success("Secret code copied!");
+                }}
+              >
+                <span className="font-bold group-hover:scale-105 transition-transform duration-200">
+                  {user.secretCode}
+                </span>
+                <span className="absolute right-4 bg-gray-700/50 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
                 </span>
               </div>
             ) : (
-              <p className="text-gray-500">No coupon found yet.</p>
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 text-sm italic">
+                <span>Generating...</span>
+              </div>
             )}
           </div>
         </div>
@@ -165,16 +243,18 @@ const Dashboard = () => {
             </div>
             {['verified', 'approved'].includes(user?.kycStatus?.toLowerCase()) ? (
               <button disabled className="bg-black text-white px-5 py-2 rounded-xl cursor-not-allowed">KYC Completed</button>
+            ) : user?.kycStatus === 'pending' ? (
+              <button disabled className="bg-yellow-600/80 text-white px-5 py-2 rounded-xl cursor-not-allowed font-medium">Reviewing</button>
             ) : (
               <Link to="/kyc-verify">
-                <button className="bg-black text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition">Complete KYC</button>
+                <button className="bg-black text-white px-5 py-2 rounded-xl hover:bg-[#d16729] transition">Complete KYC</button>
               </Link>
             )}
           </div>
         </div>
 
         {/* Subscription Status */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-10">
           <h3 className="text-xl font-semibold mb-4">Subscription Status</h3>
           <div className="flex items-center justify-between">
             <div>
@@ -191,7 +271,9 @@ const Dashboard = () => {
               )}
             </div>
             <Link to="/subscription">
-              <button className="bg-[#d16729] text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition">Manage Subscription</button>
+              <button className="bg-[#d16729] text-white px-5 py-2 rounded-xl hover:bg-[#b5571f] transition">
+                {user?.subscription?.active ? "Manage Subscription" : "Subscribe Again"}
+              </button>
             </Link>
           </div>
         </div>
@@ -248,8 +330,8 @@ const Dashboard = () => {
 
                 <p className="text-gray-400 text-[15px] leading-relaxed max-w-lg">
                   {user.referralCode
-                    ? "Invite friends. They save ₹500, you earn credits."
-                    : "Complete your KYC verification to start earning rewards. Friends save ₹500, you earn credits."}
+                    ? "Invite friends. They save ₹500, you earn upto ₹350 coins."
+                    : "Complete your KYC verification to start earning rewards. Friends save ₹500, you earn upto ₹350 coins."}
                 </p>
               </div>
 
@@ -349,6 +431,7 @@ const MyBookingsSection = ({ user }) => {
 
   if (bookings.length === 0) return null;
 
+  if (bookings.length === 0) return null;
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-5 mb-8 border border-gray-100">

@@ -51,7 +51,7 @@ const Register = () => {
         if (formData.userType === "student")
           setValid(
             formData.institution.trim().length >= 3 &&
-              phoneRegex.test(formData.phone)
+            phoneRegex.test(formData.phone)
           );
         else if (formData.userType === "employee")
           setValid(
@@ -63,7 +63,7 @@ const Register = () => {
       case 6:
         setValid(
           formData.password.length >= 6 &&
-            formData.password === formData.confirmPassword
+          formData.password === formData.confirmPassword
         );
         break;
       default:
@@ -118,6 +118,31 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (step === 2) {
+      if (valid && !loading) await sendOtp();
+      return;
+    }
+
+    if (step === 3) {
+      if (valid && !loading) await verifyOtp();
+      return;
+    }
+
+    if (step < 6) {
+      if (valid) nextStep();
+      return;
+    }
+
+    // Explicitly validate password step to avoid race condition with state
+    if (
+      step === 6 &&
+      (formData.password.length < 6 ||
+        formData.password !== formData.confirmPassword)
+    ) {
+      return;
+    }
+
     const data = {
       name: formData.name,
       email: formData.email,
@@ -183,8 +208,8 @@ const Register = () => {
             formData.userType === "student"
               ? "Your institution and phone number?"
               : formData.userType === "employee"
-              ? "Your company and phone number?"
-              : "Your phone number?",
+                ? "Your company and phone number?"
+                : "Your phone number?",
             "Set your password",
           ][step - 1]}
         </h2>

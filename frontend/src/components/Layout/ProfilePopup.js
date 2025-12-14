@@ -35,8 +35,15 @@ const ProfilePopup = ({ onClose }) => {
           removedIndices: [],
         });
       } catch (err) {
-        console.error(err);
-        toast.error("Failed to load profile");
+        if (err.response && err.response.status === 404) {
+          toast.error("Create a profile in Roommate Finder", {
+            toastId: "profile-not-found",
+          });
+          onClose();
+        } else {
+          console.error(err);
+          toast.error("Failed to load profile");
+        }
       }
     };
     fetchProfile();

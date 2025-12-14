@@ -367,7 +367,10 @@ const RoommateMatches = () => {
   // -------------------------------------------
   if (!user) return <p className="text-center mt-10">Login to see roommate matches</p>;
   if (profileCreated === null) return <p className="text-center mt-10">Checking profile...</p>;
-  if (!profileCreated) return <RoommateProfile onProfileCreated={() => setProfileCreated(true)} />;
+  if (!profileCreated) return <RoommateProfile onProfileCreated={() => {
+    setProfileCreated(true);
+    fetchData();
+  }} />;
   return (
     <div className="min-h-screen  flex flex-col">
       <div className="flex flex-col lg:flex-row w-full flex-grow pt-24">
@@ -442,34 +445,35 @@ const RoommateMatches = () => {
                             </span>
                           </div>
 
-                          {/* === AVAILABLE ROOMS BADGE (Fixed Position) === */}
-                          {currentMatch.profile.availableRooms > 0 && (
-                            <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 border border-white/20">
-                              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                              <span className="text-white text-xs font-semibold tracking-wide">
-                                {currentMatch.profile.availableRooms} Room{currentMatch.profile.availableRooms > 1 ? "s" : ""}
-                              </span>
-                            </div>
-                          )}
-
                           {/* === BOTTOM GRADIENT DETAILS === */}
                           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6">
 
-                            <h2 className="text-2xl font-bold text-white mb-1">
-                              {currentMatch.profile.user?.name}
-                              {formatAgeAndGender(currentMatch.profile)}
-                            </h2>
+                            <div className="flex justify-between items-end mb-1">
+                              <h2 className="text-2xl font-bold text-white">
+                                {currentMatch.profile.user?.name}
+                                {formatAgeAndGender(currentMatch.profile)}
+                              </h2>
+                            </div>
 
-                            <div className="flex items-center space-x-4 text-white/90 text-sm">
+                            <div className="flex items-center space-x-3 text-white/90 text-sm flex-wrap gap-y-2">
                               <span>
                                 {currentMatch.distance !== null
                                   ? `${currentMatch.distance} km away`
                                   : "Distance unavailable"}
                               </span>
 
-                              <span>
-                                ₹{currentMatch.profile.budget || "N/A"}/month
-                              </span>
+                              {/* === AVAILABLE ROOMS BADGE === */}
+                              {currentMatch.profile.availableRooms > 0 && (
+                                <div className="bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg shadow-sm flex items-center gap-1.5 border border-white/30">
+                                  <span className="relative flex h-1.5 w-1.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                                  </span>
+                                  <span className="text-white text-[10px] font-bold tracking-wide">
+                                    {currentMatch.profile.availableRooms} Room{currentMatch.profile.availableRooms > 1 ? "s" : ""}
+                                  </span>
+                                </div>
+                              )}
                             </div>
 
                           </div>
@@ -593,26 +597,17 @@ const RoommateMatches = () => {
                         </span>
                       </div>
 
-                      {/* === AVAILABLE ROOMS BADGE === */}
-                      {currentMatch.profile.availableRooms > 0 && (
-                        <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full shadow-sm flex items-center gap-2 border border-white/20">
-                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                          <span className="text-white text-sm font-semibold tracking-wide">
-                            {currentMatch.profile.availableRooms} Room{currentMatch.profile.availableRooms > 1 ? "s" : ""} Available
-                          </span>
-                        </div>
-                      )}
-
-
                       {/* === BOTTOM DETAILS GRADIENT BAR === */}
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-6">
 
-                        <h2 className="text-3xl font-bold text-white drop-shadow-lg mb-2">
-                          {currentMatch.profile.user?.name}
-                          {formatAgeAndGender(currentMatch.profile)}
-                        </h2>
+                        <div className="flex justify-between items-end mb-2">
+                          <h2 className="text-3xl font-bold text-white drop-shadow-lg">
+                            {currentMatch.profile.user?.name}
+                            {formatAgeAndGender(currentMatch.profile)}
+                          </h2>
+                        </div>
 
-                        <div className="flex items-center space-x-6 text-white/90 text-base">
+                        <div className="flex items-center space-x-4 text-white/90 text-base">
 
                           {/* Distance */}
                           <span>
@@ -621,10 +616,18 @@ const RoommateMatches = () => {
                               : "Distance unavailable"}
                           </span>
 
-                          {/* Budget */}
-                          <span className="font-medium">
-                            ₹{currentMatch.profile.budget || "N/A"}/month
-                          </span>
+                          {/* === AVAILABLE ROOMS BADGE === */}
+                          {currentMatch.profile.availableRooms > 0 && (
+                            <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-2 border border-white/30">
+                              <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                              </span>
+                              <span className="text-white text-sm font-bold tracking-wide shadow-black drop-shadow-md">
+                                {currentMatch.profile.availableRooms} Room{currentMatch.profile.availableRooms > 1 ? "s" : ""} Available
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

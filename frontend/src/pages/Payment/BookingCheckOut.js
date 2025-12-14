@@ -126,7 +126,7 @@ const BookingCheckOut = () => {
 
   const handleBookNow = async () => {
     if (type === "double" && !partnerEmail.trim()) {
-      toast.error("Please enter your roommate's email address.");
+      toast.error("Please enter your roommate's secret code.");
       return;
     }
 
@@ -272,19 +272,22 @@ const BookingCheckOut = () => {
               </div>
             </div>
 
-            {/* Partner Email */}
+            {/* Partner Secret Code */}
             {type === "double" && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Roommate's Email
+                  Roommate's Secret Code
                 </label>
                 <input
-                  type="email"
-                  placeholder="Enter roommate's email address"
+                  type="text"
+                  placeholder="Enter roommate's 10-digit secret code"
                   value={partnerEmail}
-                  onChange={(e) => setPartnerEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-gray-400 focus:border-gray-400 transition-colors duration-200 text-sm"
+                  onChange={(e) => setPartnerEmail(e.target.value.toUpperCase())}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-gray-400 focus:border-gray-400 transition-colors duration-200 text-sm uppercase font-mono tracking-widest"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Ask your roommate for their code from their dashboard.
+                </p>
               </div>
             )}
 

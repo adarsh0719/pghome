@@ -410,14 +410,8 @@ router.get('/pg-list', authMiddleware, async (req, res) => {
     const { search } = req.query;
     const searchTerm = search?.trim();
 
-    // Build a flexible query that works no matter how your properties are saved
-    let query = {
-      $or: [
-        { type: { $regex: /pg|hostel|paying/i } }, // matches PG, pg, Hostel, Paying Guest
-        { title: { $regex: /pg|hostel|paying guest/i } },
-        { "location.city": { $regex: /bangalore|pune|hyderabad|delhi|mumbai/i } } // optional: common cities
-      ]
-    };
+    // Default: Show all recent properties (limit 15 below)
+    let query = {};
 
     // If user typed something, make search super smart
     if (searchTerm) {

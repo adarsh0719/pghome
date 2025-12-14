@@ -214,18 +214,28 @@ const PropertyDetail = () => {
                           {property.owner?.name?.charAt(0).toUpperCase()}
                         </span>
                       </div>
-                      <div>
-                        <p className="font-semibold">{property.owner?.name}</p>
-                        <p className="text-gray-600">{property.owner?.email}</p>
-                        {property.owner?.phone && (
-                          <p className="text-gray-600">📞 {property.owner.phone}</p>
-                        )}
-                        {property.owner?.isBlueTick && (
-                          <span className="inline-flex items-center px-2 py-1 mt-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                            Verified Owner
-                          </span>
-                        )}
-                      </div>
+                     <div className="space-y-1">
+  <p className="text-sm font-semibold text-gray-900">
+    {property.owner?.name}
+  </p>
+
+  <p className="text-sm text-gray-500">
+    {property.owner?.email}
+  </p>
+
+  {property.owner?.phone && (
+    <p className="text-sm text-gray-500">
+      {property.owner.phone}
+    </p>
+  )}
+
+  {property.owner?.isBlueTick && (
+    <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+      Verified Owner
+    </span>
+  )}
+</div>
+
                     </div>
                   )}
                 </div>

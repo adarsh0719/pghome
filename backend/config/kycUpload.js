@@ -1,8 +1,8 @@
 const multer = require('multer');
-const { storage, fileFilter } = require('./cloudinary');
+const { kycStorage, fileFilter } = require('./cloudinary');
 
 const upload = multer({
-  storage,
+  storage: kycStorage,
   fileFilter,
   limits: { fileSize: 2 * 1024 * 1024 },
 });
