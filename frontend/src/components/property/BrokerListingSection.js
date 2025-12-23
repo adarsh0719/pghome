@@ -11,7 +11,8 @@ const BrokerListingSection = ({ user }) => {
         description: "",
         facilities: "",
         images: [],
-        isActive: true
+        isActive: true,
+        packages: []
     });
     const [imageFiles, setImageFiles] = useState([]);
     const [keptImages, setKeptImages] = useState([]);
@@ -41,9 +42,13 @@ const BrokerListingSection = ({ user }) => {
                         propertyId: data.property?._id || data.property,
                         price: data.price,
                         description: data.description,
-                        facilities: data.facilities ? data.facilities.join(',') : "",
+                        facilities: data.facilities ? (Array.isArray(data.facilities) ? data.facilities.join(',') : data.facilities) : "",
                         images: [], // We don't use this for display directly anymore, we use keptImages
-                        isActive: data.isActive
+                        isActive: data.isActive,
+                        packages: data.packages && Array.isArray(data.packages) ? data.packages.map(p => ({
+                            ...p,
+                            amenities: Array.isArray(p.amenities) ? p.amenities.join(', ') : p.amenities
+                        })) : []
                     });
                     setKeptImages(data.images || []);
                 }
@@ -93,6 +98,29 @@ const BrokerListingSection = ({ user }) => {
         setKeptImages(newKept);
     };
 
+    // --- Package Handlers ---
+    const handleAddPackage = () => {
+        setListing(prev => ({
+            ...prev,
+            packages: [...prev.packages, { name: '', price: '', amenities: '' }]
+        }));
+    };
+
+    const handleRemovePackage = (index) => {
+        setListing(prev => ({
+            ...prev,
+            packages: prev.packages.filter((_, i) => i !== index)
+        }));
+    };
+
+    const handlePackageChange = (index, field, value) => {
+        setListing(prev => {
+            const newPackages = [...prev.packages];
+            newPackages[index] = { ...newPackages[index], [field]: value };
+            return { ...prev, packages: newPackages };
+        });
+    };
+
     const handleDeleteListing = async () => {
         if (!window.confirm("Are you sure you want to delete your broker listing? This cannot be undone.")) return;
         setLoading(true);
@@ -107,7 +135,8 @@ const BrokerListingSection = ({ user }) => {
                 description: "",
                 facilities: "",
                 images: [],
-                isActive: true
+                isActive: true,
+                packages: []
             });
             setKeptImages([]);
             setImageFiles([]);
@@ -130,6 +159,18 @@ const BrokerListingSection = ({ user }) => {
             formData.append("description", listing.description);
             formData.append("facilities", listing.facilities);
             formData.append("isActive", listing.isActive);
+
+            // Process and append packages
+            const refinedPackages = listing.packages.map(pkg => ({
+                ...pkg,
+                price: Number(pkg.price),
+                amenities: typeof pkg.amenities === 'string'
+                    ? pkg.amenities.split(',').map(a => a.trim()).filter(a => a)
+                    : pkg.amenities
+            })).filter(pkg => pkg.name && pkg.price);
+
+            formData.append("packages", JSON.stringify(refinedPackages));
+
             formData.append("keptImages", JSON.stringify(keptImages));
 
             imageFiles.forEach((file) => {
@@ -257,6 +298,70 @@ const BrokerListingSection = ({ user }) => {
                             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#d16729] focus:border-transparent"
                             placeholder="Describe the property/room..."
                         ></textarea>
+                    </div>
+
+                    {/* Packages Section */}
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-800">Packages <span className="text-gray-400 text-sm font-normal">(Optional)</span></h3>
+                        <p className="text-gray-500 text-xs mb-4">
+                            Define different packages (e.g., Basic, Premium) with specific prices and amenities.
+                        </p>
+
+                        <div className="space-y-4 mb-4">
+                            {listing.packages.map((pkg, index) => (
+                                <div key={index} className="border border-gray-200 rounded-lg p-4 bg-white relative shadow-sm">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemovePackage(index)}
+                                        className="absolute top-2 right-2 text-red-400 hover:text-red-600 font-bold bg-gray-100 w-6 h-6 rounded-full flex items-center justify-center transition"
+                                    >
+                                        ×
+                                    </button>
+                                    <div className="grid md:grid-cols-2 gap-4 mb-3">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Package Name</label>
+                                            <input
+                                                type="text"
+                                                value={pkg.name}
+                                                onChange={(e) => handlePackageChange(index, 'name', e.target.value)}
+                                                placeholder="e.g. Premium Single"
+                                                className="w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-[#d16729] outline-none text-sm"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Price (₹/mo)</label>
+                                            <input
+                                                type="number"
+                                                value={pkg.price}
+                                                onChange={(e) => handlePackageChange(index, 'price', e.target.value)}
+                                                placeholder="e.g. 8000"
+                                                className="w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-[#d16729] outline-none text-sm"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-600 mb-1">Amenities (comma separated)</label>
+                                        <input
+                                            type="text"
+                                            value={pkg.amenities}
+                                            onChange={(e) => handlePackageChange(index, 'amenities', e.target.value)}
+                                            placeholder="e.g. AC, WiFi, TV"
+                                            className="w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-[#d16729] outline-none text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={handleAddPackage}
+                            className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-[#d16729] hover:text-[#d16729] transition font-medium text-sm"
+                        >
+                            + Add Package
+                        </button>
                     </div>
 
                     {/* Facilities */}

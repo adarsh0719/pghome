@@ -15,8 +15,11 @@ const PropertyCard = ({ property }) => {
           className="w-full h-48 object-cover"
         />
 
-        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded-full text-sm font-semibold shadow-sm text-[#E28955] border border-[#E28955]">
-          ₹{property.rent}/month
+        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded-full text-sm font-bold shadow-sm text-[#E28955] border border-[#E28955]">
+          {property.packages && property.packages.length > 0
+            ? `Starts @ ₹${Math.min(...property.packages.map(p => p.price))}`
+            : `₹${property.rent}/month`
+          }
         </div>
 
         {property.verified && (
@@ -62,14 +65,14 @@ const PropertyCard = ({ property }) => {
 
         {/* Rating & CTA */}
         <div className="flex justify-between items-center">
-         <div className="flex items-center bg-black rounded-full px-3 py-1 shadow-sm border border-gray-700">
-  <span className="text-yellow-400 text-lg leading-tight">★</span>
-  <span className="ml-1 text-sm font-semibold text-white">
-    {property.rating?.average > 0
-      ? `${Number(property.rating.average).toFixed(1)} • ${property.rating.count} reviews`
-      : "New Listing"}
-  </span>
-</div>
+          <div className="flex items-center bg-black rounded-full px-3 py-1 shadow-sm border border-gray-700">
+            <span className="text-yellow-400 text-lg leading-tight">★</span>
+            <span className="ml-1 text-sm font-semibold text-white">
+              {property.rating?.average > 0
+                ? `${Number(property.rating.average).toFixed(1)} • ${property.rating.count} reviews`
+                : "New Listing"}
+            </span>
+          </div>
 
 
 

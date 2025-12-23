@@ -121,6 +121,11 @@ const OwnerBookings = () => {
                 <div className="flex justify-between">
                   <span>Type:</span> <span className="font-medium text-gray-900">{b.type}</span>
                 </div>
+                {b.packageName && (
+                  <div className="flex justify-between">
+                    <span>Package:</span> <span className="font-bold text-[#d16729]">{b.packageName}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Duration:</span> <span className="font-medium text-gray-900">{b.months} Months</span>
                 </div>
@@ -183,9 +188,12 @@ const OwnerBookings = () => {
 
               <div className="space-y-1 text-gray-600 text-sm">
                 <p><span className="font-medium">Type:</span> {b.type}</p>
+                {b.packageName && (
+                  <p><span className="font-medium">Package:</span> <span className="font-bold text-[#d16729]">{b.packageName}</span></p>
+                )}
                 <p><span className="font-medium">Amount:</span> ₹{b.totalAmount}</p>
                 {b.coupon && (
-                  <p><span className="font-medium">Coupon Generated:</span> <span className="font-mono font-bold text-white bg-black px-2 py-0.5 rounded border border-gray-200">{b.coupon}</span></p>
+                  <p><span className="font-medium text-indigo-600">Coupon Generated:</span> <span className="font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">{b.coupon}</span></p>
                 )}
                 <p><span className="font-medium">Payment:</span>
                   <span className={`ml-2 ${b.status === 'paid' ? 'text-green-600 font-bold' : 'text-yellow-600'}`}>
@@ -202,7 +210,7 @@ const OwnerBookings = () => {
 
               <button
                 onClick={() => fetchUserDetails(b.bookedBy[0]._id)}
-                className="mt-4 w-full bg-black border border-gray-300 text-white py-2 rounded-lg  transition text-sm"
+                className="mt-4 w-full bg-white border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50 transition text-sm"
               >
                 View Booker Details
               </button>
@@ -214,7 +222,7 @@ const OwnerBookings = () => {
 
       {/* --- MODAL (Outside Loop) --- */}
       {showModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4 pt-20">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-0 overflow-hidden transform transition-all scale-100">
 
             <div className="bg-[#d16729] p-4 flex justify-between items-center text-white">

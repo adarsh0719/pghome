@@ -4,8 +4,7 @@ const { cloudinary } = require('../config/cloudinary'); // your existing config
 const User = require('../models/User');
 const RoommateProfile = require('../models/RoommateProfile');
 // Create Post
-// controllers/postController.js
-// controllers/postController.js
+
 const createPost = async (req, res) => {
   try {
     const { content } = req.body;

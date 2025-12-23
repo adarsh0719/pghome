@@ -15,6 +15,7 @@ const AddProperty = () => {
     type: 'pg',
     rent: '',
     securityDeposit: '',
+    packages: [{ name: '', price: '', amenities: '' }], // Initial empty package
     location: {
       address: '',
       city: '',
@@ -120,6 +121,30 @@ const AddProperty = () => {
     }));
   };
 
+  // --- Package Handlers ---
+  const handleAddPackage = () => {
+    setFormData(prev => ({
+      ...prev,
+      packages: [...prev.packages, { name: '', price: '', amenities: '' }]
+    }));
+  };
+
+  const handleRemovePackage = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      packages: prev.packages.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handlePackageChange = (index, field, value) => {
+    setFormData(prev => {
+      const newPackages = [...prev.packages];
+      newPackages[index] = { ...newPackages[index], [field]: value };
+      return { ...prev, packages: newPackages };
+    });
+  };
+  // ------------------------
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -128,11 +153,18 @@ const AddProperty = () => {
     try {
       const submitData = new FormData();
 
+      // Process packages: convert string amenities to array
+      const refinedPackages = formData.packages.map(pkg => ({
+        ...pkg,
+        price: Number(pkg.price),
+        amenities: pkg.amenities.split(',').map(a => a.trim()).filter(a => a)
+      })).filter(pkg => pkg.name && pkg.price); // Filter out empty ones
+
       // Append form data
       submitData.append('title', formData.title);
       submitData.append('description', formData.description);
       submitData.append('type', formData.type);
-      submitData.append('rent', formData.rent);
+      submitData.append('rent', formData.rent || '0'); // Allow 0 if packages define price
       submitData.append('securityDeposit', formData.securityDeposit || '0');
       submitData.append('location[address]', formData.location.address);
       submitData.append('location[city]', formData.location.city);
@@ -141,6 +173,7 @@ const AddProperty = () => {
       submitData.append('location[landmark]', formData.location.landmark);
       submitData.append('amenities', JSON.stringify(formData.amenities));
       submitData.append('rules', JSON.stringify(formData.rules));
+      submitData.append('packages', JSON.stringify(refinedPackages)); // Serialize packages
       submitData.append('liveViewAvailable', formData.liveViewAvailable);
       submitData.append('videoUrl', formData.videoUrl);
       submitData.append('vacancies[single]', formData.vacancies.single);
@@ -343,36 +376,69 @@ const AddProperty = () => {
               </div>
             </div>
 
-            {/* Pricing */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Monthly Rent (₹) *
-                </label>
-                <input
-                  type="number"
-                  name="rent"
-                  value={formData.rent}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  placeholder="e.g., 8000"
-                />
+            {/* Packages Section */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Packages</h3>
+              <p className="text-gray-500 text-sm mb-4">
+                Define different packages (e.g., Basic, Premium) with specific prices and amenities.
+              </p>
+
+              <div className="space-y-4 mb-6">
+                {formData.packages.map((pkg, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50 relative">
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePackage(index)}
+                      className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                    >
+                      ×
+                    </button>
+                    <div className="grid md:grid-cols-2 gap-4 mb-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
+                        <input
+                          type="text"
+                          value={pkg.name}
+                          onChange={(e) => handlePackageChange(index, 'name', e.target.value)}
+                          placeholder="e.g. Premium Single"
+                          className="w-full px-3 py-2 border rounded-md"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹/mo)</label>
+                        <input
+                          type="number"
+                          value={pkg.price}
+                          onChange={(e) => handlePackageChange(index, 'price', e.target.value)}
+                          placeholder="e.g. 8000"
+                          className="w-full px-3 py-2 border rounded-md"
+                          required
+                        />
+
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Amenities (comma separated)</label>
+                      <input
+                        type="text"
+                        value={pkg.amenities}
+                        onChange={(e) => handlePackageChange(index, 'amenities', e.target.value)}
+                        placeholder="e.g. AC, Attached Washroom, TV"
+                        className="w-full px-3 py-2 border rounded-md"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Security Deposit (₹)
-                </label>
-                <input
-                  type="number"
-                  name="securityDeposit"
-                  value={formData.securityDeposit}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  placeholder="e.g., 10000"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={handleAddPackage}
+                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-500 hover:text-indigo-600 transition"
+              >
+                + Add Package
+              </button>
             </div>
 
             {/* Vacancies */}

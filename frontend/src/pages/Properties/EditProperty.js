@@ -36,7 +36,8 @@ const EditProperty = () => {
     vacancies: {
       single: 0,
       double: 0
-    }
+    },
+    packages: []
   });
 
   const amenitiesList = ["WiFi", "AC", "Food", "Laundry", "Parking", "Security", "Gym", "Pool", "TV", "Refrigerator"];
@@ -69,7 +70,11 @@ const EditProperty = () => {
           vacancies: {
             single: prop.vacancies?.single || 0,
             double: prop.vacancies?.double || 0
-          }
+          },
+          packages: prop.packages ? prop.packages.map(p => ({
+            ...p,
+            amenities: Array.isArray(p.amenities) ? p.amenities.join(', ') : p.amenities
+          })) : []
         });
 
         setExistingImages(prop.images || []);
@@ -163,6 +168,29 @@ const EditProperty = () => {
     }));
   };
 
+  // --- Package Handlers ---
+  const handleAddPackage = () => {
+    setFormData(prev => ({
+      ...prev,
+      packages: [...prev.packages, { name: '', price: '', amenities: '' }]
+    }));
+  };
+
+  const handleRemovePackage = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      packages: prev.packages.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handlePackageChange = (index, field, value) => {
+    setFormData(prev => {
+      const newPackages = [...prev.packages];
+      newPackages[index] = { ...newPackages[index], [field]: value };
+      return { ...prev, packages: newPackages };
+    });
+  };
+
   // Submit update
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -170,6 +198,15 @@ const EditProperty = () => {
 
     try {
       const submitData = new FormData();
+
+      // Process packages
+      const refinedPackages = formData.packages.map(pkg => ({
+        ...pkg,
+        price: Number(pkg.price),
+        amenities: typeof pkg.amenities === 'string'
+          ? pkg.amenities.split(',').map(a => a.trim()).filter(a => a)
+          : pkg.amenities
+      })).filter(pkg => pkg.name && pkg.price);
 
       submitData.append("title", formData.title);
       submitData.append("description", formData.description);
@@ -191,6 +228,7 @@ const EditProperty = () => {
       submitData.append("amenities", JSON.stringify(formData.amenities));
       submitData.append("rules", JSON.stringify(formData.rules));
       submitData.append("existingImages", JSON.stringify(existingImages));
+      submitData.append("packages", JSON.stringify(refinedPackages));
 
       newImages.forEach((img) => submitData.append("images", img));
 
@@ -297,6 +335,71 @@ const EditProperty = () => {
             </div>
 
 
+
+            {/* Packages Section */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Packages</h3>
+              <p className="text-gray-500 text-sm mb-4">
+                Define different packages (e.g., Basic, Premium) with specific prices and amenities.
+              </p>
+
+              <div className="space-y-4 mb-6">
+                {formData.packages.map((pkg, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50 relative">
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePackage(index)}
+                      className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                    >
+                      ×
+                    </button>
+                    <div className="grid md:grid-cols-2 gap-4 mb-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
+                        <input
+                          type="text"
+                          value={pkg.name}
+                          onChange={(e) => handlePackageChange(index, 'name', e.target.value)}
+                          placeholder="e.g. Premium Single"
+                          className="w-full px-3 py-2 border rounded-md"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹/mo)</label>
+                        <input
+                          type="number"
+                          value={pkg.price}
+                          onChange={(e) => handlePackageChange(index, 'price', e.target.value)}
+                          placeholder="e.g. 8000"
+                          className="w-full px-3 py-2 border rounded-md"
+                          required
+                        />
+
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Amenities (comma separated)</label>
+                      <input
+                        type="text"
+                        value={pkg.amenities}
+                        onChange={(e) => handlePackageChange(index, 'amenities', e.target.value)}
+                        placeholder="e.g. AC, Attached Washroom, TV"
+                        className="w-full px-3 py-2 border rounded-md"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddPackage}
+                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-500 hover:text-indigo-600 transition"
+              >
+                + Add Package (Optional)
+              </button>
+            </div>
 
             {/* Vacancies */}
             <div className="grid md:grid-cols-2 gap-6">

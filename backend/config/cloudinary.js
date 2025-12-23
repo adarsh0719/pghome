@@ -26,7 +26,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// === NEW: POSTS — IMAGES + VIDEOS (FIXED FILTER) ===
+
 const postStorage = new CloudinaryStorage({
   cloudinary,
   params: {

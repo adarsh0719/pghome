@@ -81,18 +81,26 @@ exports.createProperty = async (req, res) => {
       images: images
     };
 
-    // Parse amenities and rules if they're strings (from form data)
+    // Parse amenities, rules, and packages if they're strings (from form data)
     if (typeof req.body.amenities === 'string') {
       propertyData.amenities = JSON.parse(req.body.amenities);
     }
     if (typeof req.body.rules === 'string') {
       propertyData.rules = JSON.parse(req.body.rules);
     }
+    if (typeof req.body.packages === 'string') {
+      propertyData.packages = JSON.parse(req.body.packages);
+    }
 
     // Convert rent and securityDeposit to numbers
     if (propertyData.rent) {
       propertyData.rent = Number(propertyData.rent);
+    } else if (propertyData.packages && propertyData.packages.length > 0) {
+      // Auto-set rent to lowest package price if rent is not explicitly provided
+      const rents = propertyData.packages.map(p => Number(p.price));
+      propertyData.rent = Math.min(...rents);
     }
+
     if (propertyData.securityDeposit) {
       propertyData.securityDeposit = Number(propertyData.securityDeposit);
     }
@@ -137,6 +145,7 @@ exports.updateProperty = async (req, res) => {
     // ----- Amenities & Rules -----
     const amenities = req.body.amenities ? JSON.parse(req.body.amenities) : [];
     const rules = req.body.rules ? JSON.parse(req.body.rules) : [];
+    const packages = req.body.packages ? JSON.parse(req.body.packages) : [];
 
     // ----- LOCATION (fixed) -----
     const location = {
@@ -154,20 +163,25 @@ exports.updateProperty = async (req, res) => {
       double: req.body.vacancies?.double || req.body["vacancies[double]"] || 0
     };
 
+    // Calculate minimum rent from packages if available
+    let rent = Number(req.body.rent);
+    if (packages.length > 0) {
+      const rents = packages.map(p => Number(p.price));
+      rent = Math.min(...rents);
+    }
+
     // ----- Build update object -----
     const updateData = {
       title: req.body.title,
       description: req.body.description,
       type: req.body.type,
-      rent: Number(req.body.rent),
+      rent: rent,
       securityDeposit: Number(req.body.securityDeposit || 0),
       videoUrl: req.body.videoUrl || "",
       liveViewAvailable: req.body.liveViewAvailable === "true" || req.body.liveViewAvailable === true,
       amenities,
       rules,
-      images,
-      amenities,
-      rules,
+      packages,
       images,
       location,
       vacancies

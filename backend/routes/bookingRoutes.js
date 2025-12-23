@@ -43,12 +43,25 @@ router.post('/validate-referral', protect, async (req, res) => {
 // --- NEW: Request Booking (No Payment Yet) ---
 router.post('/request-booking', protect, async (req, res) => {
   try {
-    const { propertyId, type, months, partnerEmail, referralCode, useRewards } = req.body;
+    const { propertyId, type, months, partnerEmail, referralCode, useRewards, packageId } = req.body;
 
     const property = await Property.findById(propertyId).populate('owner');
     if (!property) return res.status(404).json({ message: 'Property not found' });
 
-    const basePrice = property.rent * months;
+    let basePrice = property.rent * months;
+    let selectedPackageName = null;
+
+    // --- PACKAGE LOGIC ---
+    // If request has packageId, use that package's price
+    if (packageId && property.packages && property.packages.length > 0) {
+      // Find package by ID (Mongoose adds _id to subdocs in arrays automatically)
+      const pkg = property.packages.find(p => p._id.toString() === packageId);
+      if (pkg) {
+        basePrice = pkg.price * months;
+        selectedPackageName = pkg.name;
+      }
+    }
+
     let totalAmount = type === 'double' ? basePrice * 2 : basePrice;
 
     // --- BROKER / RESELLER LOGIC ---
@@ -61,7 +74,7 @@ router.post('/request-booking', protect, async (req, res) => {
       if (brokerListing && brokerListing.isActive) {
         // Use Broker's Price
         const brokerBasePrice = brokerListing.price * months;
-        const originalPrice = totalAmount; // This is the owner's price calculated earlier
+        const originalPrice = totalAmount; // This is the owner's price calculated earlier (could be package price)
 
         // Override totalAmount with Broker's price
         totalAmount = type === 'double' ? brokerBasePrice * 2 : brokerBasePrice;
@@ -118,7 +131,9 @@ router.post('/request-booking', protect, async (req, res) => {
       rewardsUsed,
       isReferralRewardClaimed: false,
       brokerId,
-      commissionAmount
+      commissionAmount,
+      packageId: packageId || null,
+      packageName: selectedPackageName
     });
 
     res.json({ message: 'Booking request sent to owner!', bookingId: booking._id });

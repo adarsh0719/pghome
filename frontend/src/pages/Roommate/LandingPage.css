@@ -90,7 +90,7 @@ body { margin: 0; }
   flex-direction: column;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   
-  padding-top: 120px; /* add enough padding to account for fixed navbar */
+  padding-top: 50px; /* add enough padding to account for fixed navbar */
   box-sizing: border-box;
 }
 

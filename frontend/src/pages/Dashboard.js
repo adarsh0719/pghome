@@ -454,6 +454,11 @@ const MyBookingsSection = ({ user }) => {
                   <p className="text-[10px] items-center font-medium text-gray-400 uppercase tracking-wide flex mt-0.5">
                     {new Date(book.createdAt).toLocaleDateString()} • {book.months} Months
                   </p>
+                  {book.packageName && (
+                    <p className="text-[10px] font-bold text-[#d16729] mt-0.5">
+                      {book.packageName} Package
+                    </p>
+                  )}
                 </div>
                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border 
                   ${book.status === 'paid' ? 'bg-black text-white rounded border-green-100' :

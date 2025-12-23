@@ -39,7 +39,7 @@ exports.uploadKYC = async (req, res) => {
 exports.updateBrokerListing = async (req, res) => {
   const BrokerListing = require('../models/BrokerListing');
   try {
-    const { propertyId, price, description, facilities, isActive } = req.body;
+    const { propertyId, price, description, facilities, isActive, packages } = req.body;
 
     // Build update object
     const updateFields = {
@@ -51,6 +51,18 @@ exports.updateBrokerListing = async (req, res) => {
     if (description) updateFields.description = description;
     if (facilities) updateFields.facilities = Array.isArray(facilities) ? facilities : facilities ? facilities.split(',') : undefined;
     if (typeof isActive !== 'undefined') updateFields.isActive = isActive;
+
+    // Handle Packages
+    if (packages) {
+      try {
+        const parsedPackages = typeof packages === 'string' ? JSON.parse(packages) : packages;
+        if (Array.isArray(parsedPackages)) {
+          updateFields.packages = parsedPackages;
+        }
+      } catch (e) {
+        console.error("Error parsing packages", e);
+      }
+    }
 
     // Handle Images: Merge keptImages and new uploads
     let finalImages = [];
@@ -88,7 +100,7 @@ exports.updateBrokerListing = async (req, res) => {
     res.json(listing);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message, error: error.toString() });
   }
 };
 
