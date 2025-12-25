@@ -16,6 +16,10 @@ const brokerListingSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    availableRooms: {
+        type: Number,
+        default: 0
+    },
     images: [{
         type: String
     }],
@@ -34,6 +38,11 @@ const brokerListingSchema = new mongoose.Schema({
         price: {
             type: Number,
             required: true,
+            min: 0
+        },
+        roomsAvailable: {
+            type: Number,
+            default: 0,
             min: 0
         },
         securityDeposit: {

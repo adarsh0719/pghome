@@ -45,13 +45,7 @@ const RoommateProfileSchema = new mongoose.Schema({
     ref: 'Property',
     default: null
   },
-  // models/RoommateProfile.js
-  availableRooms: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 10
-  },
+
   lookingForRoommate: {
     type: Boolean,
     default: false

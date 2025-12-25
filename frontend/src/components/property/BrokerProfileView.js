@@ -63,11 +63,11 @@ const BrokerProfileView = ({ userId, userName, userToken }) => {
     const currentPrice = selectedPackage ? selectedPackage.price : brokerListing.price;
 
     return (
-        <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-black text-white rounded-3xl  border  overflow-hidden mb-10 transition-all duration-300">
+        <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-black text-white rounded-2xl shadow-xl border border-gray-700 overflow-hidden mb-10 transition-all duration-300">
             {/* Header Banner */}
-            <div className="bg-white/5 px-6 py-4 border-b border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ">
+            <div className="bg-white/5 px-6 py-4 border-b border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 backdrop-blur-sm">
                 <div>
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-1">
                         <span className="bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-sm">
                             Exclusive Offer
                         </span>
@@ -79,9 +79,15 @@ const BrokerProfileView = ({ userId, userName, userToken }) => {
                         {brokerListing.property?.title || "Premium Property"}
                     </h2>
                     {brokerListing.property?.location && (
-                        <div className="flex items-center text-gray-400 text-sm mt-4">
+                        <div className="flex items-center text-gray-400 text-sm mt-1">
                             <MapPin size={14} className="mr-1" />
                             {brokerListing.property.location.city}, {brokerListing.property.location.state}
+                        </div>
+                    )}
+                    {(!brokerListing.packages || brokerListing.packages.length === 0) && (
+                        <div className="flex items-center text-green-400 text-sm mt-1 font-semibold">
+                            <CheckCircle size={14} className="mr-1" />
+                            {brokerListing.availableRooms || "Check Availability"} Rooms Available
                         </div>
                     )}
                 </div>
@@ -209,6 +215,11 @@ const BrokerProfileView = ({ userId, userName, userToken }) => {
                                                 {pkg.amenities && pkg.amenities.length > 0 && (
                                                     <p className="text-xs text-gray-400 truncate">
                                                         {Array.isArray(pkg.amenities) ? pkg.amenities.join(' • ') : pkg.amenities}
+                                                    </p>
+                                                )}
+                                                {pkg.roomsAvailable !== undefined && (
+                                                    <p className={`text-xs mt-1 font-semibold ${pkg.roomsAvailable > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {pkg.roomsAvailable > 0 ? `${pkg.roomsAvailable} Rooms Available` : 'Sold Out'}
                                                     </p>
                                                 )}
                                             </div>

@@ -204,7 +204,18 @@ router.get('/matches', authMiddleware, async (req, res) => {
     });
     pipeline.push({ $unwind: '$user' });
 
-    // 5. Project only needed fields
+    // 5. Lookup Broker Listing for availableRooms
+    pipeline.push({
+      $lookup: {
+        from: 'brokerlistings',
+        localField: 'user._id', // Now user is an object
+        foreignField: 'broker',
+        as: 'brokerListing'
+      }
+    });
+    pipeline.push({ $unwind: { path: '$brokerListing', preserveNullAndEmptyArrays: true } });
+
+    // 6. Project only needed fields
     pipeline.push({
       $project: {
         images: 1, // Return all images
@@ -216,7 +227,8 @@ router.get('/matches', authMiddleware, async (req, res) => {
         budget: 1,
         bio: 1,
         coordinates: 1,
-        availableRooms: 1,
+        coordinates: 1,
+        availableRooms: '$brokerListing.availableRooms', // Get from brokerListing
         lookingForRoommate: 1,
         location: 1,
         habits: 1,

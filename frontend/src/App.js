@@ -38,6 +38,7 @@ import EditProperty from './pages/Properties/EditProperty';
 import PostsFeed from './pages/posts/PostsFeed';
 import CreatePost from './pages/posts/CreatePost';
 import AdminDashboard from './pages/Admin/AdminDashboard';
+import OfflineStatus from './components/common/OfflineStatus';
 
 const queryClient = new QueryClient();
 
@@ -102,6 +103,7 @@ function App() {
       <AuthProvider>
         <SocketProvider>
           <div className="App">
+            <OfflineStatus />
 
             {!hideNavbar && <Navbar />}
             <div className="main-content ">

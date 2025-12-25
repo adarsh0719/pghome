@@ -47,7 +47,8 @@ const BrokerListingSection = ({ user }) => {
                         isActive: data.isActive,
                         packages: data.packages && Array.isArray(data.packages) ? data.packages.map(p => ({
                             ...p,
-                            amenities: Array.isArray(p.amenities) ? p.amenities.join(', ') : p.amenities
+                            amenities: Array.isArray(p.amenities) ? p.amenities.join(', ') : p.amenities,
+                            roomsAvailable: p.roomsAvailable || '' // Ensure this field exists
                         })) : []
                     });
                     setKeptImages(data.images || []);
@@ -102,7 +103,7 @@ const BrokerListingSection = ({ user }) => {
     const handleAddPackage = () => {
         setListing(prev => ({
             ...prev,
-            packages: [...prev.packages, { name: '', price: '', amenities: '' }]
+            packages: [...prev.packages, { name: '', price: '', amenities: '', roomsAvailable: '' }]
         }));
     };
 
@@ -160,10 +161,18 @@ const BrokerListingSection = ({ user }) => {
             formData.append("facilities", listing.facilities);
             formData.append("isActive", listing.isActive);
 
+            // Calculate total available rooms
+            let totalRooms = Number(availableRooms);
+            if (listing.packages.length > 0) {
+                totalRooms = listing.packages.reduce((sum, pkg) => sum + (Number(pkg.roomsAvailable) || 0), 0);
+            }
+            formData.append("availableRooms", totalRooms);
+
             // Process and append packages
             const refinedPackages = listing.packages.map(pkg => ({
                 ...pkg,
                 price: Number(pkg.price),
+                roomsAvailable: pkg.roomsAvailable ? Number(pkg.roomsAvailable) : 0,
                 amenities: typeof pkg.amenities === 'string'
                     ? pkg.amenities.split(',').map(a => a.trim()).filter(a => a)
                     : pkg.amenities
@@ -185,11 +194,9 @@ const BrokerListingSection = ({ user }) => {
 
             });
 
-            // Update available rooms
-            await axios.put("/api/roommate/available-rooms",
-                { availableRooms: availableRooms },
-                { headers: { Authorization: `Bearer ${user.token}` } }
-            );
+
+
+
 
             toast.success("Broker listing updated successfully!");
             // Update state with new data
@@ -317,7 +324,7 @@ const BrokerListingSection = ({ user }) => {
                                     >
                                         ×
                                     </button>
-                                    <div className="grid md:grid-cols-2 gap-4 mb-3">
+                                    <div className="grid md:grid-cols-3 gap-4 mb-3">
                                         <div>
                                             <label className="block text-xs font-semibold text-gray-600 mb-1">Package Name</label>
                                             <input
@@ -336,6 +343,18 @@ const BrokerListingSection = ({ user }) => {
                                                 value={pkg.price}
                                                 onChange={(e) => handlePackageChange(index, 'price', e.target.value)}
                                                 placeholder="e.g. 8000"
+                                                className="w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-[#d16729] outline-none text-sm"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Rooms Available</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={pkg.roomsAvailable}
+                                                onChange={(e) => handlePackageChange(index, 'roomsAvailable', e.target.value)}
+                                                placeholder="e.g. 2"
                                                 className="w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-[#d16729] outline-none text-sm"
                                                 required
                                             />
@@ -377,19 +396,21 @@ const BrokerListingSection = ({ user }) => {
                         />
                     </div>
 
-                    {/* Available Rooms */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Available Rooms <span className="text-gray-400 text-xs">(for Roommate Finder)</span></label>
-                        <input
-                            type="number"
-                            min="0"
-                            max="10"
-                            value={availableRooms}
-                            onChange={(e) => setAvailableRooms(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#d16729] focus:border-transparent"
-                            placeholder="0"
-                        />
-                    </div>
+                    {/* Available Rooms (Only if no packages) */}
+                    {listing.packages.length === 0 && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Available Rooms <span className="text-gray-400 text-xs">(for Roommate Finder)</span></label>
+                            <input
+                                type="number"
+                                min="0"
+                                max="10"
+                                value={availableRooms}
+                                onChange={(e) => setAvailableRooms(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#d16729] focus:border-transparent"
+                                placeholder="0"
+                            />
+                        </div>
+                    )}
 
                     {/* Images */}
                     <div>

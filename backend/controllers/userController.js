@@ -39,7 +39,7 @@ exports.uploadKYC = async (req, res) => {
 exports.updateBrokerListing = async (req, res) => {
   const BrokerListing = require('../models/BrokerListing');
   try {
-    const { propertyId, price, description, facilities, isActive, packages } = req.body;
+    const { propertyId, price, description, facilities, isActive, packages, availableRooms } = req.body;
 
     // Build update object
     const updateFields = {
@@ -51,6 +51,7 @@ exports.updateBrokerListing = async (req, res) => {
     if (description) updateFields.description = description;
     if (facilities) updateFields.facilities = Array.isArray(facilities) ? facilities : facilities ? facilities.split(',') : undefined;
     if (typeof isActive !== 'undefined') updateFields.isActive = isActive;
+    if (typeof availableRooms !== 'undefined') updateFields.availableRooms = availableRooms;
 
     // Handle Packages
     if (packages) {
